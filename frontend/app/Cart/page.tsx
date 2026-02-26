@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
+export const dynamic = 'force-dynamic' ;
+
 interface CartItem {
   id: string;
   productId: string;
@@ -201,7 +203,6 @@ export default function CartPage() {
               <div className="text-sm text-gray-600 text-center">
                 <p>✓ Paiement sécurisé</p>
                 <p>✓ Livraison gratuite dès 150 TND</p>
-                <p>✓ Retours gratuits sous 30 jours</p>
               </div>
             </div>
 

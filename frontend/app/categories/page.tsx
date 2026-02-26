@@ -1,6 +1,9 @@
 // apps/frontend/components/categories/Categories.tsx
+"use client"
 import { useEffect, useState } from 'react';
 import { getFeaturedCategories } from '@/lib/categories.service';
+
+export const dynamic = 'force-dynamic' ;
 
 export default function Categories() {
   const [categories, setCategories] = useState<any[]>([]);

@@ -1,48 +1,16 @@
-import { IsOptional, IsString, IsNumber, IsEnum } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsEnum, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProductStatus } from '../types/product-status.enum';
 
 export class ProductQueryDto {
-
-  @IsOptional()
-  @IsString()
-  category?: string;
-
-  @IsOptional()
-  @IsString()
-  brand?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  minPrice?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  maxPrice?: number;
-
-  @IsOptional()
-  @IsEnum(ProductStatus)
-  status?: ProductStatus;
-
-  @IsOptional()
-  @IsString()
-  search?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  page?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  limit?: number;
-
-  @IsOptional()
-  @IsString()
-  sortBy?: string;
-
-  @IsOptional()
-  @IsString()
-  order?: 'ASC' | 'DESC';
+  @IsOptional() @IsString() category?: string;
+  @IsOptional() @IsString() brand?: string;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) minPrice?: number;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) maxPrice?: number;
+  @IsOptional() @IsEnum(ProductStatus) status?: ProductStatus;
+  @IsOptional() @IsString() search?: string;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(1) page?: number = 1;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(1) @Max(100) limit?: number = 20;
+  @IsOptional() @IsString() sortBy?: string = 'createdAt';
+  @IsOptional() @IsString() order?: 'ASC' | 'DESC' = 'DESC';
 }

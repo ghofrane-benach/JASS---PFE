@@ -1,11 +1,10 @@
-// apps/backend/src/products/products.entity.ts
 import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
+  Entity, PrimaryGeneratedColumn, Column,
+  CreateDateColumn, UpdateDateColumn,
+  ManyToOne, JoinColumn,
 } from 'typeorm';
+import { ProductStatus } from './types/product-status.enum';
+import { Category } from '../categories/categories.entity';
 
 @Entity('products')
 export class Product {
@@ -48,13 +47,26 @@ export class Product {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
+  @Column({
+    type: 'enum',
+    enum: ProductStatus,
+    default: ProductStatus.DRAFT,
+  })
+  status: ProductStatus;
+
   @Column({ type: 'int', default: 0 })
   viewsCount: number;
+
+  @ManyToOne(() => Category, { nullable: true, eager: true })
+  @JoinColumn({ name: 'categoryId' })
+  category: Category;
+
+  @Column({ nullable: true })
+  categoryId: string;
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 
   @UpdateDateColumn({ type: 'timestamp' })
   updatedAt: Date;
-  status: import("d:/PROJECT/JASS/backend/src/products/types/product-status.enum").ProductStatus;
 }

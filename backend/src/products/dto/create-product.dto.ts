@@ -1,61 +1,23 @@
-// apps/backend/src/products/dto/create-product.dto.ts
 import {
-  IsString,
-  IsNumber,
-  IsOptional,
-  IsArray,
-  Min,
-  MaxLength,
-  IsObject,
+  IsString, IsNotEmpty, IsOptional, IsNumber,
+  IsBoolean, IsArray, IsEnum, IsUUID, MinLength, MaxLength, Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ProductStatus } from '../types/product-status.enum';
 
 export class CreateProductDto {
-  @IsString()
-  @MaxLength(255)
-  name: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(1000)
-  description?: string;
-
-  @IsNumber()
-  @Min(0.01)
-  price: number;
-
-  @IsNumber()
-  @IsOptional()
-  @Min(0)
-  costPrice?: number;
-
-  @IsNumber()
-  @Min(0)
-  stock: number = 0;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(100)
-  sku?: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(100)
-  brand?: string;
-
-  @IsNumber()
-  @IsOptional()
-  @Min(0)
-  weight?: number;
-
-  @IsObject()
-  @IsOptional()
-  dimensions?: Record<string, number>;
-
-  @IsArray()
-  @IsOptional()
-  images?: string[];
-
-  @IsObject()
-  @IsOptional()
-  metadata?: Record<string, any>;
+  @IsString() @IsNotEmpty() @MinLength(2) @MaxLength(255) name: string;
+  @IsString() @IsOptional() description?: string;
+  @IsNumber() @Min(0) @Type(() => Number) price: number;
+  @IsNumber() @IsOptional() @Min(0) @Type(() => Number) costPrice?: number;
+  @IsNumber() @IsOptional() @Min(0) @Type(() => Number) stock?: number;
+  @IsString() @IsOptional() @MaxLength(100) sku?: string;
+  @IsString() @IsOptional() @MaxLength(100) brand?: string;
+  @IsNumber() @IsOptional() @Min(0) @Type(() => Number) weight?: number;
+  @IsOptional() dimensions?: Record<string, number>;
+  @IsArray() @IsOptional() images?: string[];
+  @IsOptional() metadata?: Record<string, any>;
+  @IsBoolean() @IsOptional() isActive?: boolean;
+  @IsEnum(ProductStatus) @IsOptional() status?: ProductStatus;
+  @IsUUID() @IsOptional() categoryId?: string;
 }

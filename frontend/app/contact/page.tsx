@@ -1,9 +1,11 @@
 // apps/frontend/app/contact/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+
+export const dynamic = 'force-dynamic'
 
 export default function ContactPage() {
   const { data: session, status } = useSession();
