@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   keywords: 'ecommerce, shopping, online store, JASS',
   authors: [{ name: 'Ben Achour Ghofrane' }],
   icons: {
-    icon: '/logo.png',
+    icon: '/logo.jpeg',
   },
 };
 

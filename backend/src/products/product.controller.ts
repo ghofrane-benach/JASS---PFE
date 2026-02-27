@@ -1,16 +1,15 @@
 import {
-  Controller, Get, Post, Put, Delete, Patch,
-  Param, Body, Query, HttpCode, HttpStatus,
+  Controller, Get, Post, Put, Patch, Delete,
+  Param, Body, Query, ParseUUIDPipe,
 } from '@nestjs/common';
-import { ProductsService } from './product.service';
+import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductQueryDto } from './dto/product-query.dto';
 
-const mockUser: any = { id: 'mock', role: 'admin' };
-
 @Controller('products')
 export class ProductController {
+
   constructor(private readonly productsService: ProductsService) {}
 
   @Get()
@@ -18,55 +17,65 @@ export class ProductController {
     return this.productsService.findAll(query);
   }
 
-  @Get('popular')
-  getPopular(@Query('limit') limit?: string) {
-    return this.productsService.getPopularProducts(limit ? parseInt(limit) : 10);
+  @Get('search')
+  search(@Query('q') q: string, @Query('limit') limit?: number) {
+    return this.productsService.search(q ?? '', limit);
   }
 
-  @Get('search')
-  search(@Query('q') q: string, @Query('limit') limit?: string) {
-    return this.productsService.search(q, limit ? parseInt(limit) : 20);
+  @Get('popular')
+  getPopular(@Query('limit') limit?: number) {
+    return this.productsService.getPopularProducts(limit);
+  }
+
+  // FIX : seed AVANT :id sinon NestJS interprete "seed" comme un UUID
+  @Get('seed')
+  seed() {
+    return this.productsService.seed();
+  }
+
+  @Patch('publish-all')
+  publishAll() {
+    return this.productsService.publishAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.findOne(id);
   }
 
   @Post()
-  @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateProductDto) {
-    return this.productsService.create(dto, mockUser);
+    return this.productsService.create(dto);
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
-    return this.productsService.update(id, dto, mockUser);
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateProductDto,
+  ) {
+    return this.productsService.update(id, dto);
   }
 
   @Patch(':id/publish')
-  publish(@Param('id') id: string) {
-    return this.productsService.publish(id, mockUser);
+  publish(@Param('id', ParseUUIDPipe) id: string) {
+    return this.productsService.publish(id);
   }
 
   @Patch(':id/unpublish')
-  unpublish(@Param('id') id: string) {
-    return this.productsService.unpublish(id, mockUser);
+  unpublish(@Param('id', ParseUUIDPipe) id: string) {
+    return this.productsService.unpublish(id);
   }
 
-  @Put(':id/stock/decrease')
-  decreaseStock(@Param('id') id: string, @Body('quantity') quantity: number) {
+  @Put(':id/stock')
+  updateStock(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('quantity') quantity: number,
+  ) {
     return this.productsService.updateStock(id, quantity);
   }
 
-  @Put(':id/stock/increase')
-  increaseStock(@Param('id') id: string, @Body('quantity') quantity: number) {
-    return this.productsService.increaseStock(id, quantity);
-  }
-
   @Delete(':id')
-  @HttpCode(HttpStatus.OK)
-  remove(@Param('id') id: string) {
-    return this.productsService.remove(id, mockUser);
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.productsService.remove(id);
   }
 }

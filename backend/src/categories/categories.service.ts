@@ -49,6 +49,23 @@ export class CategoriesService {
     return { message: `Catégorie #${id} supprimée avec succès` };
   }
 
+  // ✅ SEED — créer les 3 catégories JASS si elles n'existent pas
+  async seed(): Promise<{ message: string; categories: Category[] }> {
+    const existing = await this.categoryRepository.count();
+    if (existing > 0) {
+      const cats = await this.findAll();
+      return { message: `Déjà ${existing} catégories en base`, categories: cats };
+    }
+
+    const categories = await this.categoryRepository.save([
+      this.categoryRepository.create({ name: 'Scarfs',      slug: 'scarfs'      }),
+      this.categoryRepository.create({ name: 'Accessories', slug: 'accessories' }),
+      this.categoryRepository.create({ name: 'Clothing',    slug: 'clothing'    }),
+    ]);
+
+    return { message: '3 catégories créées ✅', categories };
+  }
+
   private generateSlug(name: string): string {
     return name
       .toLowerCase()
