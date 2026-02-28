@@ -8,21 +8,21 @@ const SLIDES = [
   {
     left:  "/images/scarfs/violet.jpeg",
     right: "/images/scarfs/burgundy.jpeg",
-    label: "Nouvelle Collection Scarfs",
+    label: "JASS Scarvi Collection",
     cta:   "Découvrir",
     href:  "/products?category=scarfs",        // → page produits Scarfs
   },
   {
     left:  "/images/accessoires/papillon.jpg",
     right: "/images/accessoires/coeur2.jpeg",
-    label: "Accessoires Cerise",
+    label: "Timeless Accessoires",
     cta:   "Voir la collection",
     href:  "/products?category=accessories",   // → page produits Accessories
   },
   {
     left:  "/images/scarfs/zebra1.jpeg",
     right: "/images/scarfs/zebra.jpeg",
-    label: "Collection Clothing",
+    label: " Our Clothing Collection",
     cta:   "Explorer",
     href:  "/products?category=clothing",      // → page produits Clothing
   },
@@ -35,7 +35,7 @@ const LOOKBOOK = [
   "/images/scarfs/zebra1.jpeg",
   "/images/scarfs/red2.jpeg",
   "/images/scarfs/white.jpeg",
-  "/images/accessoires/papillon2.jpeg",
+  "/images/accessoires/papillon1.jpg",
   "/images/accessoires/braclet.jpeg",
   "/images/accessoires/collierfleur.jpeg",
   "/images/accessoires/collier1.jpeg",
@@ -284,6 +284,7 @@ function VideoSection() {
 
   // ✅ Chemin statique — vidéo dans frontend/public/videos/jass-video.mp4
   const VIDEO_SRC = "/videos/scarvs.mp4";
+  
 
   function toggle() {
     const v = vRef.current; if (!v) return;

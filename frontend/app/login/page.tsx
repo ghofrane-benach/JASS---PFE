@@ -1,194 +1,226 @@
-// apps/frontend/app/(auth)/login/page.tsx
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+
+export const dynamic = 'force-dynamic';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
-    setIsLoading(true);
-
+    setError(''); setLoading(true);
     try {
-      const response = await fetch('http://localhost:3000/api/auth/login', {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Erreur de connexion');
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Email ou mot de passe incorrect');
       }
-
-      const { access_token, user } = await response.json();
-      
-      // Stocker le token
+      const { access_token, user } = await res.json();
       localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(user));
-      
-      // Rediriger vers la page d'accueil
       window.location.href = '/';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Brand Header */}
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <span className="text-4xl font-serif font-light"> JASS </span>
-          </div>
-          <h2 className="mt-6 text-3xl font-serif font-light text-gray-900">
-            Bonjour
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Connectez-vous à votre compte
+    <div style={{
+      minHeight: '100vh', display: 'flex',
+      fontFamily: "'Cormorant Garamond', Georgia, serif",
+      background: '#fff',
+    }}>
+
+      {/* ── LEFT PANEL — image déco ───────────────────── */}
+      <div style={{
+        flex: 1, display: 'none',
+        backgroundImage: "url('/images/scarfs/bley.jpeg')",
+        backgroundSize: 'cover', backgroundPosition: 'center',
+        position: 'relative',
+      }} className="login-left">
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)' }} />
+        <div style={{ position: 'absolute', bottom: 60, left: 48 }}>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, letterSpacing: '0.4em', textTransform: 'uppercase', marginBottom: 12 }}>
+            JASS Scarvi
+          </p>
+          <p style={{ color: '#fff', fontSize: 28, fontWeight: 300, lineHeight: 1.2, maxWidth: 280 }}>
+            L'élégance<br /><em style={{ fontStyle: 'italic' }}>à portée de main</em>
           </p>
         </div>
+      </div>
 
-        {/* Login Form */}
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+      {/* ── RIGHT PANEL — formulaire ──────────────────── */}
+      <div style={{
+        flex: 1, display: 'flex', alignItems: 'center',
+        justifyContent: 'center', padding: '60px 6vw',
+      }}>
+        <div style={{ width: '100%', maxWidth: 400 }}>
+
+          {/* Logo */}
+          <Link href="/" style={{ textDecoration: 'none', display: 'block', textAlign: 'center', marginBottom: 48 }}>
+            <span style={{ fontSize: 28, fontWeight: 300, letterSpacing: '0.12em', color: '#111' }}>JASS</span>
+          </Link>
+
+          {/* Heading */}
+          <div style={{ textAlign: 'center', marginBottom: 40 }}>
+            <h1 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', fontWeight: 300, margin: '0 0 10px' }}>
+              Bonjour
+            </h1>
+            <p style={{ fontSize: 13, color: '#aaa', letterSpacing: '0.04em' }}>
+              Connectez-vous à votre compte
+            </p>
+          </div>
+
+          {/* Error */}
           {error && (
-            <div className="bg-red-50 text-red-500 p-3 rounded text-sm">
-              {error}
+            <div style={{
+              padding: '12px 16px', marginBottom: 24,
+              border: '1px solid #fca5a5', background: '#fff5f5',
+              fontSize: 13, color: '#c0392b', letterSpacing: '0.02em',
+            }}>
+              ⚠ {error}
             </div>
           )}
 
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black focus:z-10 font-serif"
-                placeholder="Adresse email"
-              />
-            </div>
+          {/* Form */}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Mot de passe
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black focus:z-10 font-serif"
-                placeholder="Mot de passe"
-              />
-            </div>
-          </div>
+            <InputField
+              id="email" type="email" value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="Adresse email" required
+            />
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-black focus:ring-black border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900 font-serif">
+            <InputField
+              id="password" type="password" value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Mot de passe" required
+            />
+
+            {/* Remember + Forgot */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 0' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#555', cursor: 'pointer' }}>
+                <input type="checkbox" style={{ accentColor: '#111' }} />
                 Se souvenir de moi
               </label>
-            </div>
-
-            <div className="text-sm">
-              <a href="#" className="font-serif text-black hover:text-gray-700">
+              <a href="#" style={{ fontSize: 12, color: '#888', textDecoration: 'none', borderBottom: '1px solid #ddd' }}>
                 Mot de passe oublié ?
               </a>
             </div>
-          </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent font-serif text-lg font-light hover:bg-black hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: 'white', color: 'black' }}
-            >
-              {isLoading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Chargement...
-                </span>
-              ) : (
-                'Se Connecter'
-              )}
+            {/* Submit */}
+            <button type="submit" disabled={loading} style={{
+              marginTop: 8, padding: '15px',
+              background: loading ? '#555' : '#111',
+              color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: 11, letterSpacing: '0.25em', textTransform: 'uppercase',
+              fontFamily: 'inherit', transition: 'background 0.25s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            }}>
+              {loading ? (
+                <>
+                  <div style={{ width: 14, height: 14, border: '1px solid rgba(255,255,255,0.4)', borderTop: '1px solid #fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                  Connexion…
+                </>
+              ) : 'Se Connecter'}
             </button>
-          </div>
-        </form>
+          </form>
 
-        {/* Register Link */}
-        <div className="text-center">
-          <p className="text-sm text-gray-600 font-serif">
+          {/* Register link */}
+          <p style={{ textAlign: 'center', marginTop: 28, fontSize: 13, color: '#888' }}>
             Pas encore de compte ?{' '}
-            <Link href="/register" className="font-medium text-black hover:text-gray-700">
+            <Link href="/register" style={{ color: '#111', textDecoration: 'none', borderBottom: '1px solid #111' }}>
               Créer un compte
             </Link>
           </p>
-        </div>
 
-        {/* Social Login */}
-        <div className="mt-8">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500 font-serif">
-                Ou continuer avec
-              </span>
-            </div>
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '32px 0' }}>
+            <div style={{ flex: 1, height: 1, background: '#f0f0f0' }} />
+            <span style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Ou</span>
+            <div style={{ flex: 1, height: 1, background: '#f0f0f0' }} />
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <button className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded font-serif text-sm hover:bg-gray-50">
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              Google
-            </button>
-            <button className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded font-serif text-sm hover:bg-gray-50">
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                <path fill="#1877F2" d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.852V15.467h-3.604V12h3.604V9.356c0-3.593 2.121-5.532 5.193-5.532 1.483 0 2.688.109 3.063.157v3.51h-2.11c-1.659 0-1.975.793-1.975 1.945V12h3.95l-.525 3.467h-3.425v8.385C19.612 23.006 24 18.067 24 12z"/>
-              </svg>
-              Facebook
-            </button>
+          {/* Social buttons */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <SocialBtn icon="google" label="Google" />
+            <SocialBtn icon="facebook" label="Facebook" />
           </div>
+
         </div>
       </div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap');
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (min-width: 768px) {
+          .login-left { display: block !important; }
+        }
+      `}</style>
     </div>
+  );
+}
+
+// ─── SUB-COMPONENTS ───────────────────────────────────────────────────────
+
+function InputField({ id, type, value, onChange, placeholder, required }: {
+  id: string; type: string; value: string;
+  onChange: (e: any) => void; placeholder: string; required?: boolean;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <input
+      id={id} type={type} value={value} onChange={onChange}
+      placeholder={placeholder} required={required}
+      onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+      style={{
+        width: '100%', padding: '14px 16px',
+        border: `1px solid ${focused ? '#111' : '#e8e8e8'}`,
+        background: '#fafafa', outline: 'none',
+        fontFamily: 'inherit', fontSize: 14, color: '#333',
+        boxSizing: 'border-box', transition: 'border-color 0.2s',
+      }}
+    />
+  );
+}
+
+function SocialBtn({ icon, label }: { icon: 'google' | 'facebook'; label: string }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button style={{
+      padding: '12px', border: `1px solid ${hov ? '#111' : '#e8e8e8'}`,
+      background: '#fff', cursor: 'pointer', fontFamily: 'inherit',
+      fontSize: 12, color: '#333', letterSpacing: '0.06em',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+      transition: 'border-color 0.2s',
+    }}
+      onMouseOver={() => setHov(true)} onMouseOut={() => setHov(false)}>
+      {icon === 'google' ? (
+        <svg width="16" height="16" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24">
+          <path fill="#1877F2" d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.852V15.467h-3.604V12h3.604V9.356c0-3.593 2.121-5.532 5.193-5.532 1.483 0 2.688.109 3.063.157v3.51h-2.11c-1.659 0-1.975.793-1.975 1.945V12h3.95l-.525 3.467h-3.425v8.385C19.612 23.006 24 18.067 24 12z"/>
+        </svg>
+      )}
+      {label}
+    </button>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -16,6 +16,15 @@ export default function Header() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen]       = useState(false);
   const [catOpen, setCatOpen]         = useState(false);
+  const catTimer = useRef<NodeJS.Timeout | null>(null);
+
+  function openCat()  {
+    if (catTimer.current) clearTimeout(catTimer.current);
+    setCatOpen(true);
+  }
+  function closeCat() {
+    catTimer.current = setTimeout(() => setCatOpen(false), 120);
+  }
   const [scrolled, setScrolled]       = useState(false);
   const [categories, setCategories]   = useState<Category[]>([
     { id: 'clothing',    name: 'Clothing',    slug: 'clothing'    },
@@ -38,6 +47,7 @@ export default function Header() {
 
   const nav = [
     { name: 'Accueil',       href: '/'        },
+    { name: 'New Collection',    href: '/products' },
     { name: 'Notre Histoire',href: '/about'    },
     { name: 'Contact',       href: '/contact'  },
   ];
@@ -89,15 +99,15 @@ export default function Header() {
 
               {/* Categories dropdown */}
               <div style={{ position: 'relative' }}
-                onMouseEnter={() => setCatOpen(true)}
-                onMouseLeave={() => setCatOpen(false)}>
+                onMouseEnter={openCat}
+                onMouseLeave={closeCat}>
                 <button style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   fontSize: 13, letterSpacing: '0.08em', color: '#666',
                   fontFamily: 'inherit', padding: '2px 0',
                   display: 'flex', alignItems: 'center', gap: 6,
                 }}>
-                  Our Collection
+                  Catégories
                   <span style={{
                     fontSize: 9,
                     transform: catOpen ? 'rotate(180deg)' : 'none',
@@ -116,7 +126,10 @@ export default function Header() {
                     boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
                     minWidth: 180, zIndex: 200,
                     animation: 'dropIn 0.2s ease',
-                  }}>
+                  }}
+                    onMouseEnter={openCat}
+                    onMouseLeave={closeCat}
+                  >
                     <Link href="/products" style={{
                       display: 'block', padding: '12px 20px',
                       fontSize: 12, letterSpacing: '0.06em', color: '#999',

@@ -1,229 +1,212 @@
-// apps/frontend/app/(auth)/register/page.tsx
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic' ;
+export const dynamic = 'force-dynamic';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
+  const [form, setForm] = useState({
+    firstName: '', lastName: '',
+    email: '', phone: '',
+    password: '', confirmPassword: '',
   });
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [error,   setError]   = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setForm({ ...form, [e.target.name]: e.target.value });
+    setError('');
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    setIsLoading(true);
 
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
+    if (form.password !== form.confirmPassword) {
       setError('Les mots de passe ne correspondent pas');
-      setIsLoading(false);
+      return;
+    }
+    if (form.password.length < 6) {
+      setError('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
 
+    setLoading(true);
     try {
-      const response = await fetch('http://localhost:3000/api/auth/register', {
+      const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          phone: formData.phone,
-          password: formData.password,
+          firstName: form.firstName,
+          lastName:  form.lastName,
+          email:     form.email,
+          phone:     form.phone,
+          password:  form.password,
         }),
       });
-
-      if (!response.ok) {
-        const data = await response.json();
+      if (!res.ok) {
+        const data = await res.json();
         throw new Error(data.message || 'Erreur lors de l\'inscription');
       }
-
-      // Rediriger vers login
       window.location.href = '/login';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Brand Header */}
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <span className="text-4xl font-serif font-light">JASS</span>
-          </div>
-          <h2 className="mt-6 text-3xl font-serif font-light text-gray-900">
-            Créer un compte
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Rejoignez la famille JASS
+    <div style={{
+      minHeight: '100vh', display: 'flex',
+      fontFamily: "'Cormorant Garamond', Georgia, serif",
+      background: '#fff',
+    }}>
+
+      {/* ── LEFT PANEL — image déco ───────────────────── */}
+      <div style={{
+        flex: 1, display: 'none',
+        backgroundImage: "url('/images/accessoires/coeur1.jpeg')",
+        backgroundSize: 'cover', backgroundPosition: 'center',
+        position: 'relative',
+      }} className="register-left">
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)' }} />
+        <div style={{ position: 'absolute', bottom: 60, left: 48 }}>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, letterSpacing: '0.4em', textTransform: 'uppercase', marginBottom: 12 }}>
+            JASS Scarvi
           </p>
-        </div>
-
-        {/* Register Form */}
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 text-red-500 p-3 rounded text-sm">
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="firstName" className="sr-only">
-                  Prénom
-                </label>
-                <input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  required
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black focus:z-10 font-serif"
-                  placeholder="Prénom"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="lastName" className="sr-only">
-                  Nom
-                </label>
-                <input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  required
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black focus:z-10 font-serif"
-                  placeholder="Nom"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black focus:z-10 font-serif"
-                placeholder="Adresse email"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="phone" className="sr-only">
-                Téléphone
-              </label>
-              <input
-                id="phone"
-                name="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={handleChange}
-                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black focus:z-10 font-serif"
-                placeholder="Numéro de téléphone (optionnel)"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Mot de passe
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black focus:z-10 font-serif"
-                placeholder="Mot de passe"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="sr-only">
-                Confirmer le mot de passe
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black focus:z-10 font-serif"
-                placeholder="Confirmer le mot de passe"
-              />
-            </div>
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent font-serif text-lg font-light hover:bg-black hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: 'white', color: 'black' }}
-            >
-              {isLoading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Chargement...
-                </span>
-              ) : (
-                'Créer mon compte'
-              )}
-            </button>
-          </div>
-        </form>
-
-        {/* Login Link */}
-        <div className="text-center">
-          <p className="text-sm text-gray-600 font-serif">
-            Vous avez déjà un compte ?{' '}
-            <Link href="/login" className="font-medium text-black hover:text-gray-700">
-              Se connecter
-            </Link>
+          <p style={{ color: '#fff', fontSize: 28, fontWeight: 300, lineHeight: 1.2, maxWidth: 280 }}>
+            Rejoignez<br /><em style={{ fontStyle: 'italic' }}>la famille JASS</em>
           </p>
         </div>
       </div>
+
+      {/* ── RIGHT PANEL — formulaire ──────────────────── */}
+      <div style={{
+        flex: 1, display: 'flex', alignItems: 'center',
+        justifyContent: 'center', padding: '60px 6vw',
+        overflowY: 'auto',
+      }}>
+        <div style={{ width: '100%', maxWidth: 420 }}>
+
+          {/* Logo */}
+          <Link href="/" style={{ textDecoration: 'none', display: 'block', textAlign: 'center', marginBottom: 40 }}>
+            <span style={{ fontSize: 28, fontWeight: 300, letterSpacing: '0.12em', color: '#111' }}>JASS</span>
+          </Link>
+
+          {/* Heading */}
+          <div style={{ textAlign: 'center', marginBottom: 36 }}>
+            <h1 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', fontWeight: 300, margin: '0 0 10px' }}>
+              Créer un compte
+            </h1>
+            <p style={{ fontSize: 13, color: '#aaa', letterSpacing: '0.04em' }}>
+              Rejoignez la famille JASS
+            </p>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div style={{
+              padding: '12px 16px', marginBottom: 20,
+              border: '1px solid #fca5a5', background: '#fff5f5',
+              fontSize: 13, color: '#c0392b',
+            }}>
+              ⚠ {error}
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {/* Prénom + Nom */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <InputField name="firstName" value={form.firstName} onChange={handleChange} placeholder="Prénom" required />
+              <InputField name="lastName"  value={form.lastName}  onChange={handleChange} placeholder="Nom"    required />
+            </div>
+
+            <InputField name="email"    type="email"    value={form.email}    onChange={handleChange} placeholder="Adresse email"                required />
+            <InputField name="phone"    type="tel"      value={form.phone}    onChange={handleChange} placeholder="Téléphone (optionnel)" />
+            <InputField name="password" type="password" value={form.password} onChange={handleChange} placeholder="Mot de passe (min. 6 caractères)" required />
+            <InputField name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} placeholder="Confirmer le mot de passe" required />
+
+            {/* Password strength indicator */}
+            {form.password.length > 0 && (
+              <div style={{ display: 'flex', gap: 4, marginTop: -4 }}>
+                {[1, 2, 3].map(i => (
+                  <div key={i} style={{
+                    flex: 1, height: 2,
+                    background: form.password.length >= i * 4
+                      ? i === 1 ? '#e55' : i === 2 ? '#f0a' : '#4a9e6f'
+                      : '#f0f0f0',
+                    transition: 'background 0.3s',
+                  }} />
+                ))}
+              </div>
+            )}
+
+            {/* Submit */}
+            <button type="submit" disabled={loading} style={{
+              marginTop: 8, padding: '15px',
+              background: loading ? '#555' : '#111',
+              color: '#fff', border: 'none',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: 11, letterSpacing: '0.25em', textTransform: 'uppercase',
+              fontFamily: 'inherit', transition: 'background 0.25s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            }}>
+              {loading ? (
+                <>
+                  <div style={{ width: 14, height: 14, border: '1px solid rgba(255,255,255,0.4)', borderTop: '1px solid #fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                  Création…
+                </>
+              ) : 'Créer mon compte'}
+            </button>
+          </form>
+
+          {/* Login link */}
+          <p style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: '#888' }}>
+            Vous avez déjà un compte ?{' '}
+            <Link href="/login" style={{ color: '#111', textDecoration: 'none', borderBottom: '1px solid #111' }}>
+              Se connecter
+            </Link>
+          </p>
+
+        </div>
+      </div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap');
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (min-width: 768px) {
+          .register-left { display: block !important; }
+        }
+      `}</style>
     </div>
+  );
+}
+
+// ─── SUB-COMPONENTS ───────────────────────────────────────────────────────
+
+function InputField({ name, type = 'text', value, onChange, placeholder, required }: {
+  name: string; type?: string; value: string;
+  onChange: (e: any) => void; placeholder: string; required?: boolean;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <input
+      name={name} id={name} type={type} value={value}
+      onChange={onChange} placeholder={placeholder} required={required}
+      onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+      style={{
+        width: '100%', padding: '14px 16px',
+        border: `1px solid ${focused ? '#111' : '#e8e8e8'}`,
+        background: '#fafafa', outline: 'none',
+        fontFamily: 'inherit', fontSize: 14, color: '#333',
+        boxSizing: 'border-box', transition: 'border-color 0.2s',
+      }}
+    />
   );
 }

@@ -1,42 +1,19 @@
-// import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { AuthService } from '../auth.service';
 
-//import { User } from '../../users/users.entity';
-//import { UserRole } from '../../users/types/user-role.enum';
-
-//@Injectable()
+@Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(
-    private readonly configService: ConfigService,
-  //  @InjectRepository(User)
-  //  private readonly userRepository: Repository<User>,
-  ) {
+  constructor(private readonly authService: AuthService) {
     super({
-    //  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET'),
+      secretOrKey: process.env.JWT_SECRET ?? 'jass-secret-key-2025',
     });
   }
 
-  //async validate(payload: any): Promise<User> {
-    //const { email, sub: id, role } = payload;
-
-  //  const user = await this.userRepository.findOne({
-    //  where: { id, email, isActive: true },
-   //   select: ['id', 'email', 'firstName', 'lastName', 'role', 'isActive'],
-   // });
-//
-   // if (!user) {
-   //   throw new UnauthorizedException('Invalid token');
-    }
-
-   // return {
-     // ...user,
-     //role: role as UserRole,
-   // };
-  ///}
-//}
+  async validate(payload: { sub: string; email: string }) {
+    return this.authService.validateUser(payload.sub);
+  }
+}
