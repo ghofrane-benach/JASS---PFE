@@ -9,6 +9,7 @@ import { ProductQueryDto } from './dto/product-query.dto';
 
 @Controller('products')
 export class ProductController {
+  productsRepository: any;
 
   constructor(private readonly productsService: ProductsService) {}
 
@@ -78,4 +79,9 @@ export class ProductController {
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.remove(id);
   }
+  @Delete('admin/truncate')
+async truncate() {
+  await this.productsRepository.query('TRUNCATE TABLE products CASCADE');
+  return { message: 'Table vidée' };
+}
 }

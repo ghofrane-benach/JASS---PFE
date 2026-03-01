@@ -30,7 +30,7 @@ export class ProductsService {
     // FIX : filtrer catégorie par slug OU name OU id
     if (category) {
       qb.andWhere(
-        '(LOWER(category.slug) = LOWER(:cat) OR LOWER(category.name) = LOWER(:cat) OR product.categoryId = :cat)',
+        '(LOWER(category.slug) = LOWER(:cat) OR LOWER(category.name) = LOWER(:cat))',
         { cat: category },
       );
     }

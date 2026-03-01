@@ -139,7 +139,7 @@ export default function Header() {
                       Tous les produits
                     </Link>
                     {categories.map(cat => (
-                      <Link key={cat.id} href={`/products?category=${cat.id}`} style={{
+                      <Link key={cat.id} href={`/products?category=${cat.slug}`} style={{
                         display: 'block', padding: '12px 20px',
                         fontSize: 13, letterSpacing: '0.04em', color: '#333',
                         textDecoration: 'none',
@@ -227,7 +227,7 @@ export default function Header() {
                 Catégories
               </p>
               {categories.map(cat => (
-                <Link key={cat.id} href={`/products?category=${cat.id}`}
+                <Link key={cat.id} href={`/products?category=${cat.slug}`}
                   onClick={() => setMenuOpen(false)}
                   style={{
                     display: 'block', padding: '10px 0',

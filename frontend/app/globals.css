@@ -1,11 +1,8 @@
 /* apps/frontend/app/globals.css */
 
-/* ✅ Tailwind v4 — une seule ligne suffit */
-@import "tailwindcss";
 
-/* ✅ Police Cormorant Garamond */
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap');
-
+@import "tailwindcss";
 
 @theme {
   /* Couleurs principales */
@@ -32,7 +29,9 @@
   --spacing-section: 6vw;
 }
 
-
+/* ════════════════════════════════════════
+   BASE STYLES
+════════════════════════════════════════ */
 @layer base {
   * {
     box-sizing: border-box;
@@ -58,6 +57,9 @@
   ::-webkit-scrollbar-thumb:hover { background: #262626; }
 }
 
+/* ════════════════════════════════════════
+   COMPOSANTS RÉUTILISABLES
+════════════════════════════════════════ */
 @layer components {
 
   /* Boutons */

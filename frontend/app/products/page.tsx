@@ -1,204 +1,281 @@
 'use client';
 
-// ✅ RÈGLE : "use client" → pas de async/await au niveau du composant
-// On utilise useEffect pour fetcher les données côté client
-
-import { useState, useEffect } from 'react';
-import { useParams, notFound } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
+// ✅ En local : localhost:3000 | En Docker : backend:3000
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 interface Product {
   id: string;
   name: string;
   price: number;
-  description?: string;
   images?: string[];
-  stock?: number;
-  category?: { name: string };
+  status?: string;
+  category?: { name: string; slug?: string };
 }
 
-export default function ProductPage() {
-  const params   = useParams();
-  const id       = params?.id as string;
+const CATEGORIES = [
+  { id: '',            label: 'New Collection' },
+  { id: 'clothing',    label: 'Clothing' },
+  { id: 'scarfs',      label: 'Scarfs' },
+  { id: 'accessories', label: 'Accessories' },
+];
 
-  const [product,  setProduct]  = useState<Product | null>(null);
-  const [loading,  setLoading]  = useState(true);
-  const [notFound404, setNotFound] = useState(false);
-  const [mainImg,  setMainImg]  = useState(0);
-  const [added,    setAdded]    = useState(false);
+// ── Wrap in Suspense to allow useSearchParams ─────────────────────────────
+export default function ProductsPageWrapper() {
+  return (
+    <Suspense fallback={<LoadingView />}>
+      <ProductsPage />
+    </Suspense>
+  );
+}
+
+function ProductsPage() {
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams.get('category') ?? '';
+
+  const [products, setProducts]     = useState<Product[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState('');
+  const [activeFilter, setActive]   = useState(categoryParam);
+  const [sortBy, setSortBy]         = useState('newest');
+  const [hoveredId, setHoveredId]   = useState<string | null>(null);
+
+  // Sync URL param → local filter
+  useEffect(() => { setActive(categoryParam); }, [categoryParam]);
 
   useEffect(() => {
-    if (!id) return;
-    fetch(`${API_URL}/products/${id}`, { cache: 'no-store' } as RequestInit)
+    setLoading(true);
+    setError('');
+
+    const url = new URL(`${API_URL}/products`);
+    if (activeFilter) url.searchParams.set('category', activeFilter);
+    // Don't filter by status in case backend doesn't have published products yet
+    if (sortBy === 'newest')     url.searchParams.set('sortBy', 'createdAt');
+    if (sortBy === 'price-asc')  { url.searchParams.set('sortBy', 'price'); url.searchParams.set('order', 'ASC'); }
+    if (sortBy === 'price-desc') { url.searchParams.set('sortBy', 'price'); url.searchParams.set('order', 'DESC'); }
+    url.searchParams.set('limit', '50');
+
+    fetch(url.toString())
       .then(res => {
-        if (res.status === 404) { setNotFound(true); return null; }
-        if (!res.ok) throw new Error('Erreur serveur');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
-      .then(data => { if (data) setProduct(data); })
-      .catch(() => setNotFound(true))
+      .then(data => {
+        // Handle both { data: [] } and [] response shapes
+        const list = Array.isArray(data) ? data : (data.data ?? data.products ?? []);
+        setProducts(list);
+      })
+      .catch(err => {
+        console.error('Products fetch error:', err);
+        setError('Impossible de charger les produits. Vérifiez que le backend est démarré.');
+      })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [activeFilter, sortBy]);
 
-  // ── Loading ───────────────────────────────────────────────
-  if (loading) return (
-    <div style={{
-      minHeight: '100vh', display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
-      fontFamily: "'Cormorant Garamond', Georgia, serif",
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ width: 40, height: 40, border: '1px solid #111', borderTop: '1px solid transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 20px' }} />
-        <p style={{ color: '#888', fontSize: 13, letterSpacing: '0.2em', textTransform: 'uppercase' }}>Chargement</p>
-      </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-
-  // ── 404 ───────────────────────────────────────────────────
-  if (notFound404 || !product) return (
-    <div style={{
-      minHeight: '60vh', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: 20,
-      fontFamily: "'Cormorant Garamond', Georgia, serif",
-    }}>
-      <p style={{ fontSize: 18, color: '#333' }}>Produit introuvable</p>
-      <Link href="/products" style={{ fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#111', textDecoration: 'none', borderBottom: '1px solid #111', paddingBottom: 2 }}>
-        ← Voir tous les produits
-      </Link>
-    </div>
-  );
-
-  const images = product.images?.length ? product.images : ['/images/placeholder.jpg'];
-  const price  = Number(product.price).toFixed(2);
+  // ── Category name for heading ─────────────────────────────────────────
+  const catLabel = CATEGORIES.find(c => c.id === activeFilter)?.label ?? 'Tous les produits';
 
   return (
     <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", background: '#fff', minHeight: '100vh' }}>
 
-      {/* ── BREADCRUMB ────────────────────────────────────── */}
-      <div style={{ padding: '16px 6vw', borderBottom: '1px solid #f0f0f0' }}>
-        <div style={{ maxWidth: 1300, margin: '0 auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Link href="/" style={{ fontSize: 11, color: '#aaa', textDecoration: 'none', letterSpacing: '0.1em' }}>Accueil</Link>
-          <span style={{ color: '#ccc', fontSize: 11 }}>›</span>
-          <Link href="/products" style={{ fontSize: 11, color: '#aaa', textDecoration: 'none', letterSpacing: '0.1em' }}>Produits</Link>
-          <span style={{ color: '#ccc', fontSize: 11 }}>›</span>
-          <span style={{ fontSize: 11, color: '#333', letterSpacing: '0.1em' }}>{product.name}</span>
+      {/* ── PAGE HEADER ──────────────────────────────────── */}
+      <section style={{ background: '#080808', color: '#fff', padding: '72px 6vw 60px', textAlign: 'center' }}>
+        <p style={{ fontSize: 10, letterSpacing: '0.5em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>
+          JASS — Collection
+        </p>
+        <h1 style={{ fontSize: 'clamp(2rem, 5vw, 4rem)', fontWeight: 300, margin: 0, letterSpacing: '-0.01em' }}>
+          {catLabel}
+        </h1>
+        {!loading && !error && (
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 14, letterSpacing: '0.1em' }}>
+            {products.length} produit{products.length !== 1 ? 's' : ''}
+          </p>
+        )}
+      </section>
+
+      {/* ── FILTERS BAR ──────────────────────────────────── */}
+      <div style={{
+        borderBottom: '1px solid #f0f0f0', background: '#fff',
+        padding: '0 6vw', position: 'sticky', top: 68, zIndex: 50,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: 16,
+      }}>
+        {/* Category pills */}
+        <div style={{ display: 'flex', gap: 0 }}>
+          {CATEGORIES.map(cat => (
+            <button key={cat.id}
+              onClick={() => {
+                setActive(cat.id);
+                // Update URL without navigation
+                const url = new URL(window.location.href);
+                if (cat.id) url.searchParams.set('category', cat.id);
+                else url.searchParams.delete('category');
+                window.history.pushState({}, '', url.toString());
+              }}
+              style={{
+                padding: '18px 24px', border: 'none', background: 'none',
+                cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 12, letterSpacing: '0.1em',
+                color: activeFilter === cat.id ? '#111' : '#aaa',
+                borderBottom: activeFilter === cat.id ? '2px solid #111' : '2px solid transparent',
+                transition: 'all 0.2s',
+              }}>
+              {cat.label}
+            </button>
+          ))}
         </div>
+
+        {/* Sort */}
+        <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{
+          padding: '8px 16px', border: '1px solid #e8e8e8',
+          background: '#fff', fontFamily: 'inherit',
+          fontSize: 11, letterSpacing: '0.1em', color: '#666',
+          cursor: 'pointer', outline: 'none',
+        }}>
+          <option value="newest">Plus récents</option>
+          <option value="price-asc">Prix croissant</option>
+          <option value="price-desc">Prix décroissant</option>
+        </select>
       </div>
 
-      {/* ── MAIN CONTENT ──────────────────────────────────── */}
-      <div style={{ maxWidth: 1300, margin: '0 auto', padding: '60px 6vw', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80 }}>
+      {/* ── CONTENT ──────────────────────────────────────── */}
+      <div style={{ maxWidth: 1300, margin: '0 auto', padding: '60px 6vw' }}>
 
-        {/* ── LEFT: IMAGES ───────────────────────────────── */}
-        <div>
-          {/* Main image */}
-          <div style={{ aspectRatio: '3/4', background: '#f8f8f8', marginBottom: 12, overflow: 'hidden' }}>
-            <img
-              src={images[mainImg]}
-              alt={product.name}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          </div>
-          {/* Thumbnails */}
-          {images.length > 1 && (
-            <div style={{ display: 'flex', gap: 8 }}>
-              {images.map((img, i) => (
-                <button key={i} onClick={() => setMainImg(i)} style={{
-                  width: 70, height: 70, padding: 0, border: i === mainImg ? '1px solid #111' : '1px solid transparent',
-                  background: '#f8f8f8', cursor: 'pointer', overflow: 'hidden', flexShrink: 0,
-                }}>
-                  <img src={img} alt={`vue ${i+1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Loading */}
+        {loading && <LoadingView />}
 
-        {/* ── RIGHT: DETAILS ─────────────────────────────── */}
-        <div style={{ paddingTop: 8 }}>
-          {product.category && (
-            <p style={{ fontSize: 10, letterSpacing: '0.35em', textTransform: 'uppercase', color: '#aaa', marginBottom: 16 }}>
-              {product.category.name}
+        {/* Error */}
+        {!loading && error && (
+          <div style={{ textAlign: 'center', padding: '80px 0' }}>
+            <p style={{ fontSize: 40, marginBottom: 16 }}>⚠️</p>
+            <p style={{ fontSize: 15, color: '#c0392b', marginBottom: 12 }}>{error}</p>
+            <p style={{ fontSize: 12, color: '#aaa', marginBottom: 32, letterSpacing: '0.05em' }}>
+              Vérifiez que le backend NestJS tourne sur le port 3000
             </p>
-          )}
-
-          <h1 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.8rem)', fontWeight: 300, lineHeight: 1.1, margin: '0 0 20px', letterSpacing: '-0.01em' }}>
-            {product.name}
-          </h1>
-
-          <p style={{ fontSize: '2rem', fontWeight: 300, margin: '0 0 32px', letterSpacing: '0.02em' }}>
-            {price} <span style={{ fontSize: '1rem', color: '#888' }}>TND</span>
-          </p>
-
-          {product.description && (
-            <p style={{ fontSize: 14, lineHeight: 1.8, color: '#555', margin: '0 0 40px', maxWidth: 420 }}>
-              {product.description}
-            </p>
-          )}
-
-          {/* Stock */}
-          {product.stock !== undefined && (
-            <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 32,
-              color: product.stock > 0 ? '#4a9e6f' : '#e55' }}>
-              {product.stock > 0 ? `✓ En stock (${product.stock})` : '✗ Rupture de stock'}
-            </p>
-          )}
-
-          {/* CTA Buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 400 }}>
-            <button
-              onClick={() => { setAdded(true); setTimeout(() => setAdded(false), 2000); }}
-              style={{
-                padding: '16px 32px', background: added ? '#4a9e6f' : '#111',
-                color: '#fff', border: 'none', cursor: 'pointer',
-                fontSize: 11, letterSpacing: '0.25em', textTransform: 'uppercase',
-                fontFamily: 'inherit', transition: 'background 0.3s',
-              }}>
-              {added ? '✓ Ajouté au panier' : 'Ajouter au panier'}
-            </button>
-            <button style={{
-              padding: '16px 32px', background: 'transparent',
-              color: '#111', border: '1px solid #111', cursor: 'pointer',
-              fontSize: 11, letterSpacing: '0.25em', textTransform: 'uppercase',
-              fontFamily: 'inherit',
+            <button onClick={() => setLoading(true)} style={{
+              padding: '12px 32px', background: '#111', color: '#fff',
+              border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase',
             }}>
-              ♡ Ajouter aux favoris
+              Réessayer
             </button>
           </div>
+        )}
 
-          {/* Details accordion */}
-          <div style={{ marginTop: 48, borderTop: '1px solid #f0f0f0', paddingTop: 32 }}>
-            <h3 style={{ fontSize: 12, letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: 16, color: '#333' }}>
-              Détails du produit
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 32px' }}>
-              {[
-                ['Composition', '100% cachemire'],
-                ['Entretien', 'Lavage à 30°C'],
-                ['Origine', 'Tunisie'],
-                ['Livraison', 'Toute la Tunisie'],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <p style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#aaa', marginBottom: 4 }}>{label}</p>
-                  <p style={{ fontSize: 13, color: '#333' }}>{value}</p>
-                </div>
-              ))}
-            </div>
+        {/* Empty state */}
+        {!loading && !error && products.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '80px 0' }}>
+            <p style={{ fontSize: 48, marginBottom: 20 }}>🧣</p>
+            <h2 style={{ fontSize: 22, fontWeight: 300, margin: '0 0 12px' }}>
+              Aucun produit trouvé
+            </h2>
+            <p style={{ fontSize: 13, color: '#aaa', marginBottom: 32 }}>
+              {activeFilter ? `Aucun produit dans la catégorie "${catLabel}"` : 'Aucun produit disponible pour le moment'}
+            </p>
+            <button onClick={() => setActive('')} style={{
+              padding: '12px 32px', background: 'transparent', color: '#111',
+              border: '1px solid #111', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase',
+            }}>
+              Voir tous les produits
+            </button>
           </div>
-        </div>
+        )}
+
+        {/* Grid */}
+        {!loading && !error && products.length > 0 && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gap: 4,
+          }}>
+            {products.map(product => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                hovered={hoveredId === product.id}
+                onHover={setHoveredId}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&display=swap');
-        @media (max-width: 768px) {
-          div[style*="grid-template-columns: 1fr 1fr"] {
-            grid-template-columns: 1fr !important;
-            gap: 40px !important;
-          }
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
+    </div>
+  );
+}
+
+// ─── PRODUCT CARD ─────────────────────────────────────────────────────────
+function ProductCard({ product, hovered, onHover }: {
+  product: Product;
+  hovered: boolean;
+  onHover: (id: string | null) => void;
+}) {
+  const img   = product.images?.[0] ?? '/images/placeholder.jpg';
+  const price = Number(product.price).toFixed(2);
+
+  return (
+    <Link href={`/products/${product.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+      onMouseOver={() => onHover(product.id)}
+      onMouseOut={() => onHover(null)}>
+
+      {/* Image */}
+      <div style={{ aspectRatio: '3/4', background: '#f8f8f8', overflow: 'hidden', position: 'relative' }}>
+        <img src={img} alt={product.name} style={{
+          width: '100%', height: '100%', objectFit: 'cover',
+          transform: hovered ? 'scale(1.05)' : 'scale(1)',
+          transition: 'transform 0.7s cubic-bezier(0.16,1,0.3,1)',
+        }} />
+        {/* Quick view overlay */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'rgba(0,0,0,0.15)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          padding: '0 0 20px',
+          opacity: hovered ? 1 : 0,
+          transition: 'opacity 0.3s',
+        }}>
+          <span style={{
+            background: '#fff', color: '#111', padding: '10px 28px',
+            fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase',
+            fontFamily: "'Cormorant Garamond', serif",
+          }}>
+            Voir le produit
+          </span>
+        </div>
+      </div>
+
+      {/* Info */}
+      <div style={{ padding: '16px 4px 24px' }}>
+        {product.category && (
+          <p style={{ fontSize: 9, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#bbb', marginBottom: 6 }}>
+            {product.category.name}
+          </p>
+        )}
+        <h3 style={{ fontSize: 15, fontWeight: 400, margin: '0 0 8px', lineHeight: 1.3 }}>
+          {product.name}
+        </h3>
+        <p style={{ fontSize: 14, fontWeight: 300, margin: 0, color: '#333' }}>
+          {price} <span style={{ fontSize: 11, color: '#aaa' }}>TND</span>
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+// ─── LOADING ──────────────────────────────────────────────────────────────
+function LoadingView() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 0' }}>
+      <div style={{ width: 36, height: 36, border: '1px solid #ddd', borderTop: '1px solid #111', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: 20 }} />
+      <p style={{ fontSize: 10, letterSpacing: '0.4em', textTransform: 'uppercase', color: '#aaa' }}>Chargement</p>
     </div>
   );
 }
