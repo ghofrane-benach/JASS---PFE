@@ -3,8 +3,8 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeor
 @Entity()
 export class User {
 
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ unique: true })
   email: string;
@@ -12,8 +12,17 @@ export class User {
   @Column()
   password: string;
 
-  @Column()
+  @Column({ nullable: true })
+  firstName: string;
+
+  @Column({ nullable: true })
+  lastName: string;
+
+  @Column({ nullable: true })
   name: string;
+
+  @Column({ nullable: true })
+  phone: string;
 
   @CreateDateColumn()
   createdAt: Date;

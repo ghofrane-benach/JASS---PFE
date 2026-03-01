@@ -4,11 +4,11 @@ import './globals.css';
 import AuthProvider from '@/component/AuthProvider';
 import Header from '@/component/Header';
 import Footer from '@/component/Footer';
+import { CartProvider } from '@/context/CartContext';
 import { ReactNode } from 'react';
 
 const inter = Inter({ subsets: ['latin'] });
 
-// ✅ viewport doit être exporté séparément en Next.js 16+
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1.0,
@@ -29,9 +29,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          <Header />
-          {children}
-          <Footer />
+          <CartProvider>
+            <Header />
+            {children}
+            <Footer />
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>

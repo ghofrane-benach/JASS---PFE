@@ -29,8 +29,9 @@ export default function RegisterPage() {
       setError('Les mots de passe ne correspondent pas');
       return;
     }
-    if (form.password.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères');
+    const pwdRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/;
+    if (!pwdRegex.test(form.password)) {
+      setError('Le mot de passe doit contenir au moins 8 caractères, une lettre et un chiffre');
       return;
     }
 
@@ -69,7 +70,7 @@ export default function RegisterPage() {
       {/* ── LEFT PANEL — image déco ───────────────────── */}
       <div style={{
         flex: 1, display: 'none',
-        backgroundImage: "url('/images/accessoires/coeur1.jpeg')",
+        backgroundImage: "url('/images/scarfs/burgundy.jpeg')",
         backgroundSize: 'cover', backgroundPosition: 'center',
         position: 'relative',
       }} className="register-left">
@@ -133,19 +134,37 @@ export default function RegisterPage() {
             <InputField name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} placeholder="Confirmer le mot de passe" required />
 
             {/* Password strength indicator */}
-            {form.password.length > 0 && (
-              <div style={{ display: 'flex', gap: 4, marginTop: -4 }}>
-                {[1, 2, 3].map(i => (
-                  <div key={i} style={{
-                    flex: 1, height: 2,
-                    background: form.password.length >= i * 4
-                      ? i === 1 ? '#e55' : i === 2 ? '#f0a' : '#4a9e6f'
-                      : '#f0f0f0',
-                    transition: 'background 0.3s',
-                  }} />
-                ))}
-              </div>
-            )}
+            {form.password.length > 0 && (() => {
+              const hasLetter = /[a-zA-Z]/.test(form.password);
+              const hasNumber = /\d/.test(form.password);
+              const hasLength = form.password.length >= 8;
+              const score = [hasLetter, hasNumber, hasLength].filter(Boolean).length;
+              const colors = ['#e55', '#f0a020', '#4a9e6f'];
+              const labels = ['Faible', 'Moyen', 'Fort'];
+              return (
+                <div>
+                  <div style={{ display: 'flex', gap: 4, marginTop: -4 }}>
+                    {[1, 2, 3].map(i => (
+                      <div key={i} style={{
+                        flex: 1, height: 2,
+                        background: score >= i ? colors[score - 1] : '#f0f0f0',
+                        transition: 'background 0.3s',
+                      }} />
+                    ))}
+                  </div>
+                  <p style={{ fontSize: 11, color: score > 0 ? colors[score - 1] : '#aaa', marginTop: 4 }}>
+                    {score > 0 ? labels[score - 1] : ''} {score === 3 ? '✓' : ''}
+                    {score < 3 && form.password.length > 0 && (
+                      <span style={{ color: '#bbb' }}>
+                        {!hasLetter && ' · Ajoutez des lettres'}
+                        {!hasNumber && ' · Ajoutez des chiffres'}
+                        {!hasLength && ' · Minimum 8 caractères'}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Submit */}
             <button type="submit" disabled={loading} style={{

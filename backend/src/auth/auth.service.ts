@@ -54,6 +54,6 @@ export class AuthService {
   }
 
   async validateUser(userId: string) {
-    return this.userRepository.findOne({ where: { id: Number(userId) } });
+    return this.userRepository.findOne({ where: { id: userId } });
   }
 }

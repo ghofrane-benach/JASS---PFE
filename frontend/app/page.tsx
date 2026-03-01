@@ -35,7 +35,7 @@ const LOOKBOOK = [
   "/images/scarfs/zebra1.jpeg",
   "/images/scarfs/red2.jpeg",
   "/images/scarfs/white.jpeg",
-  "/images/accessoires/papillon1.jpg",
+  "/images/accessoires/papillon1.jpeg",
   "/images/accessoires/braclet.jpeg",
   "/images/accessoires/collierfleur.jpeg",
   "/images/accessoires/collier1.jpeg",
@@ -226,8 +226,9 @@ function CategoriesStrip() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 4 }}>
           {[
             { name: "Clothing",    slug: "clothing",    img: "/images/scarfs/violet.jpeg",      ratio: "4/5" },
+            { name: "Accessories", slug: "accessories", img: "/images/accessoires/coeur.jpeg",  ratio: "4/5" },
             { name: "Scarfs",      slug: "scarfs",      img: "/images/scarfs/zebra1.jpeg",       ratio: "4/5" },
-            { name: "Accessories", slug: "accessories", img: "/images/accessoires/cerise.jpeg",  ratio: "4/5" },
+            
           ].map((c, i) => <CatCard key={i} {...c} />)}
         </div>
       </div>
@@ -311,14 +312,16 @@ function VideoSection() {
         </div>
 
         {/* Video player */}
-        <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", background: "#1c1c1c", overflow: "hidden" }}>
+        <div style={{ position: "relative", width: "100%", aspectRatio: "3/4", background: "#1c1c1c", overflow: "hidden" }}>
           <video
             ref={vRef}
             src={VIDEO_SRC}
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
             muted={muted}
             loop
+            autoPlay
             playsInline
+            onPlay={() => setPlay(true)}
             onEnded={() => setPlay(false)}
           />
 
