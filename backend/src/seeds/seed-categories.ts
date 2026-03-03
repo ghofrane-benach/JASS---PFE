@@ -37,35 +37,319 @@ export const seedCategories = async (dataSource: DataSource) => {
   const S = saved['scarfs'];
   const A = saved['accessories'];
   const C = saved['clothing'];
+
+  // ✅ GUIDE IMAGES :
+  //    images[0] = image principale affichée dans la liste produits + 1ère image carousel
+  //    images[1] = 2ème image carousel (remplace le chemin par ta vraie image)
+  //    images[2] = 3ème image carousel (remplace le chemin par ta vraie image)
+  //
+  //    Place tes images dans : frontend/public/images/scarfs/
+  //                            frontend/public/images/accessoires/
+  //                            frontend/public/images/clothing/
+  //
+  //    Exemple : '/images/scarfs/pink_2.jpeg' → fichier à frontend/public/images/scarfs/pink_2.jpeg
+
   const products = [
-    { name: 'Écharpe Rose',        price: 40,  stock: 15, images: ['/images/scarfs/pink.jpeg'],           description: 'Écharpe en cachemire rose.',              category: S },
-    { name: 'Écharpe Bleu Ciel',   price: 40,  stock: 15, images: ['/images/scarfs/bleu ciel.jpeg'],      description: 'Écharpe en cachemire bleu ciel.',          category: S },
-    { name: 'Écharpe Bleu Marine', price: 40,  stock: 15, images: ['/images/scarfs/bleumarine2.jpeg'],      description: 'Écharpe Bleu marine en Melloton Gratté.', category: S },
-    { name: 'Écharpe Vert Kiwi',   price: 40,  stock: 15, images: ['/images/scarfs/green.jpeg'],           description: 'Écharpe en cachemire Vert Kiwi.',         category: S },
-    { name: 'Écharpe Violette',    price: 40,  stock: 15, images: ['/images/scarfs/violet.jpeg'],           description: 'Écharpe en cachemire violette.',         category: S },
-    { name: 'Écharpe Bordeaux',    price: 40,  stock: 10, images: ['/images/scarfs/burgundy.jpeg'],          description: 'Écharpe bordeaux en laine fine.',       category: S },
-    { name: 'Écharpe Zébra',       price: 40,  stock: 8,  images: ['/images/scarfs/zebra1.jpeg'],            description: 'Écharpe motif zébré.',                  category: S },
-    { name: 'Écharpe Tigré   ',    price: 40,  stock: 6,  images: ['/images/scarfs/tigre.jpeg'],             description: 'Écharpe tigré en Bouclette.',           category: S },
-    { name: 'Écharpe Rouge',       price: 40,  stock: 20, images: ['/images/scarfs/red2.jpeg'],              description: 'Écharpe rouge vif en coton premium.',   category: S },
-    { name: 'Écharpe Noire',       price: 40, stock: 16, images: ['/images/scarfs/noir.jpeg'],               description: 'Écharpe noire élégante en Cachemire.',   category: S },
-    { name: 'Écharpe Blanche',     price: 40,  stock: 12, images: ['/images/scarfs/white.jpeg'],             description: 'Écharpe blanche légère.',               category: S },
-    { name: 'Écharpe Marron Bouclette',  price: 40,  stock: 9,  images: ['/images/scarfs/brown.jpeg'],       description: 'Écharpe Marron en Bouclette.',           category: S },
-    { name: 'Écharpe Gris & Blanc', price: 40, stock: 9,  images: ['/images/scarfs/grey.jpeg'],           description: 'Écharpe Gris & Blanc en Bouclette.',         category: S },
-    { name: 'Écharpe Marron    ',  price: 40,  stock: 9,  images: ['/images/scarfs/marron.jpeg'],           description: 'Écharpe Marron en Cachemire.',           category: S },
-    { name: 'Écharpe Bleue',       price: 40,  stock: 14, images: ['/images/scarfs/bleu.jpeg'],            description: 'Écharpe bleue en Melloton Gratté.',        category: S },
-    { name: 'Écharpe Noir & Blanc', price: 40,  stock: 7,  images: ['/images/scarfs/cow.jpeg'],               description: 'Écharpe motif vache originale.',        category: S },
-    { name: 'Écharpe Jaune',       price: 40,  stock: 11, images: ['/images/scarfs/jaune2.jpeg'],            description: 'Écharpe jaune ensoleillée.',             category: S },
-    { name: 'Accessoire Cerise',   price: 15,  stock: 25, images: ['/images/accessoires/cerise.jpeg'],       description: 'Bijou cerise artisanal.',               category: A },
-    { name: 'Bracelet Élégant',    price: 25,  stock: 30, images: ['/images/accessoires/braclet.jpeg'],      description: 'Bracelet fait main en Tunisie.',        category: A },
-    { name: 'Collier Fleur',       price: 25,  stock: 18, images: ['/images/accessoires/collierfleur.jpeg'], description: 'Collier floral artisanal.',              category: A },
-    { name: 'Collier Tunisie',     price: 20,  stock: 20, images: ['/images/accessoires/collier1.jpeg'],     description: 'Collier fin et élégant.',               category: A },
-    { name: 'Boucles Coeur',       price: 20,  stock: 35, images: ['/images/accessoires/coeur.jpeg'],        description: 'Accessoires coquettes assortis.',       category: A },
-    { name: 'Coquettes',           price: 20,  stock: 35, images: ['/images/accessoires/coquettes.jpeg'],    description: 'Accessoires coquettes assortis.',       category: A },
-    { name: 'Papillon Décoratif',  price: 20,  stock: 22, images: ['/images/accessoires/papillon1.jpeg'],      description: 'Accessoire papillon original.',         category: A },
-    { name: 'Trench Coat Noir',    price: 120,  stock: 22, images: ['/images/scarfs/blanc1.jpeg'],           description: 'Trench coat noire élégante.',           category: C },
-    { name: 'Trench Coat Noir',    price: 120,  stock: 22, images: ['/images/scarfs/blanc.jpeg'],            description: 'Trench coat noire élégante.',           category: C },
-];
-const seedNames = products.map(p => p.name);
+
+    // ════════════════════════════════════════
+    // SCARFS
+    // ════════════════════════════════════════
+    {
+      name: 'Écharpe Rose',
+      price: 40, stock: 15,
+      description: 'Écharpe en cachemire rose.',
+      images: [
+        '/images/scarfs/pink.jpeg',        
+        '/images/scarfs/pink.jpeg',         
+        '/images/scarfs/pink.jpeg',        
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Bleu Ciel',
+      price: 40, stock: 15,
+      description: 'Écharpe en cachemire bleu ciel.',
+      images: [
+        '/images/scarfs/bleu ciel.jpeg',    
+        '/images/scarfs/bleu ciel.jpeg',    
+        '/images/scarfs/bleu ciel.jpeg',    
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Bleu Marine',
+      price: 40, stock: 15,
+      description: 'Écharpe Bleu marine en Melloton Gratté.',
+      images: [
+        '/images/scarfs/bleumarine.jpeg',  
+        '/images/scarfs/bleumarine1.jpeg',  
+        '/images/scarfs/bleumarine2.jpeg',  
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Vert Kiwi',
+      price: 40, stock: 15,
+      description: 'Écharpe en cachemire Vert Kiwi.',
+      images: [
+        '/images/scarfs/green.jpeg',    
+        '/images/scarfs/green1.jpeg',        
+        '/images/scarfs/green2.jpeg',        
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Violette',
+      price: 40, stock: 15,
+      description: 'Écharpe en cachemire violette.',
+      images: [
+        '/images/scarfs/violet.jpeg',       
+        '/images/scarfs/violet1.jpeg',       
+        '/images/scarfs/violet2.jpeg',       
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Bordeaux',
+      price: 40, stock: 10,
+      description: 'Écharpe bordeaux en laine fine.',
+      images: [
+        '/images/scarfs/burgundy.jpeg',    
+        '/images/scarfs/burgundy.jpeg',     
+        '/images/scarfs/burgundy.jpeg',     
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Zébra',
+      price: 40, stock: 8,
+      description: 'Écharpe motif zébré.',
+      images: [
+        '/images/scarfs/zebra.jpeg',    
+        '/images/scarfs/zebra1.jpeg',      
+        '/images/scarfs/zebra1.jpeg',       
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Tigrée',
+      price: 40, stock: 6,
+      description: 'Écharpe tigré en Bouclette.',
+      images: [
+        '/images/scarfs/tigre.jpeg',        
+        '/images/scarfs/tigre1.jpeg',       
+        '/images/scarfs/tigre.jpeg',       
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Rouge',
+      price: 40, stock: 20,
+      description: 'Écharpe rouge vif en coton premium.',
+      images: [
+        '/images/scarfs/red.jpeg',       
+        '/images/scarfs/rouge1.jpeg',        
+        '/images/scarfs/red2.jpeg',         
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Noire',
+      price: 40, stock: 16,
+      description: 'Écharpe noire élégante en Cachemire.',
+      images: [
+        '/images/scarfs/noir.jpeg',        
+        '/images/scarfs/black1.jpeg',        
+        '/images/scarfs/black.jpeg',         
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Blanche',
+      price: 40, stock: 12,
+      description: 'Écharpe blanche légère.',
+      images: [
+        '/images/scarfs/white.jpeg',      
+        '/images/scarfs/white1.jpeg',       
+        '/images/scarfs/white.jpeg',        
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Marron Bouclette',
+      price: 40, stock: 9,
+      description: 'Écharpe Marron en Bouclette.',
+      images: [
+        '/images/scarfs/brown.jpeg',       
+        '/images/scarfs/marrose.jpeg',        
+        '/images/scarfs/brown.jpeg',        
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Gris & Blanc',
+      price: 40, stock: 9,
+      description: 'Écharpe Gris & Blanc en Bouclette.',
+      images: [
+        '/images/scarfs/grey.jpeg',        
+        '/images/scarfs/grey.jpeg',         
+        '/images/scarfs/grey.jpeg',         
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Marron',
+      price: 40, stock: 9,
+      description: 'Écharpe Marron en Cachemire.',
+      images: [
+        '/images/scarfs/marron.jpeg',      
+        '/images/scarfs/marron.jpeg',       
+        '/images/scarfs/marron.jpeg',       
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Bleue',
+      price: 40, stock: 14,
+      description: 'Écharpe bleue en Melloton Gratté.',
+      images: [
+        '/images/scarfs/bleu.jpeg',        
+        '/images/scarfs/bley.jpeg',         
+        '/images/scarfs/bleu.jpeg',         
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Noir & Blanc',
+      price: 40, stock: 7,
+      description: 'Écharpe motif vache originale.',
+      images: [
+        '/images/scarfs/cow.jpeg',        
+        '/images/scarfs/cow1.jpeg',          
+        '/images/scarfs/cow.jpeg',          
+      ],
+      category: S,
+    },
+    {
+      name: 'Écharpe Jaune',
+      price: 40, stock: 11,
+      description: 'Écharpe jaune ensoleillée.',
+      images: [
+        '/images/scarfs/jaune2.jpeg',       
+        '/images/scarfs/jaune1.jpeg',       
+      ],
+      category: S,
+    },
+
+    // ════════════════════════════════════════
+    // ACCESSORIES
+    // ════════════════════════════════════════
+    {
+      name: 'Accessoire Cerise',
+      price: 15, stock: 25,
+      description: 'Bijou cerise artisanal.',
+      images: [
+        '/images/accessoires/cerise.jpeg',       
+        '/images/accessoires/cerise.jpeg',          
+        '/images/accessoires/cerise.jpeg',          
+      ],
+      category: A,
+    },
+    {
+      name: 'Bracelet Élégant',
+      price: 25, stock: 30,
+      description: 'Bracelet fait main en Tunisie.',
+      images: [
+        '/images/accessoires/braclet.jpeg',       
+        '/images/accessoires/braclet.jpeg',        
+        '/images/accessoires/braclet.jpeg',        
+      ],
+      category: A,
+    },
+    {
+      name: 'Collier Fleur',
+      price: 25, stock: 18,
+      description: 'Collier floral artisanal.',
+      images: [
+        '/images/accessoires/collierfleur.jpeg',
+        '/images/accessoires/collierfleur.jpeg',    
+        '/images/accessoires/collierfleur.jpeg',    
+      ],
+      category: A,
+    },
+    {
+      name: 'Collier Tunisie',
+      price: 20, stock: 20,
+      description: 'Collier fin et élégant.',
+      images: [
+        '/images/accessoires/collier1.jpeg',       
+        '/images/accessoires/collier.jpeg',       
+        '/images/accessoires/collier1.jpeg',      
+      ],
+      category: A,
+    },
+    {
+      name: 'Boucles Coeur',
+      price: 20, stock: 35,
+      description: "Boucles d'oreilles en forme de coeur.",
+      images: [
+        '/images/accessoires/coeur.jpeg',          
+        '/images/accessoires/coeur1.jpeg',          
+        '/images/accessoires/coeur2.jpeg',         
+      ],
+      category: A,
+    },
+    {
+      name: 'Coquettes',
+      price: 20, stock: 35,
+      description: 'Accessoires coquettes assortis.',
+      images: [
+        '/images/accessoires/coquettes.jpeg',      
+        '/images/accessoires/coquettes.jpeg',      
+        '/images/accessoires/coquettes.jpeg',      
+      ],
+      category: A,
+    },
+    {
+      name: 'Papillon Décoratif',
+      price: 20, stock: 22,
+      description: 'Accessoire papillon original.',
+      images: [
+        '/images/accessoires/papillon1.jpeg',      
+        '/images/accessoires/papillon2.jpeg',       
+        '/images/accessoires/papillon3.jpeg',       
+      ],
+      category: A,
+    },
+
+    // ════════════════════════════════════════
+    // CLOTHING
+    // ════════════════════════════════════════
+    {
+      name: 'Trench Coat Blanc I',
+      price: 120, stock: 22,
+      description: 'Trench coat blanche élégante.',
+      images: [
+        '/images/scarfs/blanc1.jpeg',      
+        '/images/scarfs/blanc1.jpeg',       
+        '/images/scarfs/blanc1.jpeg',     
+      ],
+      category: C,
+    },
+    {
+      name: 'Trench Coat Blanc II',
+      price: 120, stock: 22,
+      description: 'Trench coat blanche élégante.',
+      images: [
+        '/images/scarfs/blanc.jpeg',        
+        '/images/scarfs/blanc1.jpeg',        
+        '/images/scarfs/blanc.jpeg',        
+      ],
+      category: C,
+    },
+  ];
+
+  const seedNames = products.map(p => p.name);
 
   // ── SUPPRIMER les produits qui ne sont plus dans le code ──
   const allInDb = await productRepo.find();
@@ -75,7 +359,8 @@ const seedNames = products.map(p => p.name);
     console.log(`🗑  ${toDelete.length} produit(s) supprimé(s) : ${toDelete.map(p => p.name).join(', ')}`);
   }
 
- let created = 0, updated = 0;
+  const deletedCount = toDelete.length;
+  let created = 0, updated = 0;
 
   for (const p of products) {
     const existing = await productRepo.findOne({ where: { name: p.name } });
@@ -105,5 +390,5 @@ const seedNames = products.map(p => p.name);
     }
   }
 
-  console.log(`\n🎉 Seed terminé — ✅ ${created} créés | 🔄 ${updated} mis à jour | 🗑 ${toDelete.length} supprimés`);
-}; 
+  console.log(`\n🎉 Seed terminé — ✅ ${created} créés | 🔄 ${updated} mis à jour | 🗑 ${deletedCount} supprimés`);
+};

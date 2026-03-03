@@ -337,7 +337,7 @@ export default function Header() {
 
             {/* Footer */}
             {items.length > 0 && (() => {
-              const subtotal = items.reduce((s, i) => s + Number(i.price) * i.qty, 0);
+              const subtotal = items.reduce((s: number, i: { price: any; qty: number; }) => s + Number(i.price) * i.qty, 0);
               return (
                 <div style={{ padding: '16px 24px', borderTop: '1px solid #f0f0f0' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>

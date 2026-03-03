@@ -7,7 +7,7 @@ import { Key, ReactElement, JSXElementConstructor, ReactNode, ReactPortal } from
 export default function CartPage() {
   const { items, totalQty, updateQty, removeItem, clearCart } = useCart();
 
-  const subtotal = items.reduce((s, i) => s + Number(i.price) * i.qty, 0);
+  const subtotal = items.reduce((s: number, i: { price: any; qty: number; }) => s + Number(i.price) * i.qty, 0);
   const shipping = subtotal > 0 ? 8 : 0;
   const total     = subtotal + shipping;
 
@@ -54,7 +54,7 @@ export default function CartPage() {
                 <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr auto auto auto', gap: 16, alignItems: 'center', padding: '20px 0', borderBottom: '1px solid #f5f5f5' }}>
                   <Link href={`/products/${String(item.id)}`}>
                     <div style={{ width: 80, height: 96, background: '#f8f8f8', overflow: 'hidden' }}>
-                      <img src={item.image || '/images/placeholder.jpg'} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={item.image || '/images/placeholder.jpg'} alt={String(item.name)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   </Link>
                   <div>
@@ -67,7 +67,7 @@ export default function CartPage() {
                     <button onClick={() => updateQty(item.id, +1)} style={{ width: 32, height: 32, background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>+</button>
                   </div>
                   <p style={{ fontSize: 14, fontWeight: 300, textAlign: 'right', margin: 0, whiteSpace: 'nowrap' }}>
-                    {(Math.round(Number(item.price) * item.qty * 100) / 100).toFixed(2)} <span style={{ fontSize: 11, color: '#aaa' }}>TND</span>
+                    {(Math.round(Number(item.price) * Number(item.qty) * 100) / 100).toFixed(2)} <span style={{ fontSize: 11, color: '#aaa' }}>TND</span>
                   </p>
                   <button onClick={() => removeItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: 20, padding: 0 }}>×</button>
                 </div>

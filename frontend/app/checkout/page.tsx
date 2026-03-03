@@ -37,10 +37,34 @@ export default function CheckoutPage() {
 
   async function placeOrder() {
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
-    clearCart();
-    setStep('confirmation');
-    setLoading(false);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+      const res = await fetch(`${API_URL}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: form.firstName,
+          lastName:  form.lastName,
+          email:     form.email,
+          phone:     form.phone,
+          address:   form.address,
+          city:      form.city,
+          zip:       form.zip,
+          payMethod: form.payMethod,
+          subtotal,
+          shipping,
+          total,
+          items: items.map((i: { id: any; name: any; price: any; image: any; qty: any; }) => ({ id: i.id, name: i.name, price: i.price, image: i.image, qty: i.qty })),
+        }),
+      });
+      if (!res.ok) throw new Error('Erreur serveur');
+      clearCart();
+      setStep('confirmation');
+    } catch (err) {
+      alert('Erreur lors de la commande. Veuillez réessayer.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (items.length === 0 && step !== 'confirmation') {
@@ -81,7 +105,7 @@ export default function CheckoutPage() {
       {/* HERO */}
       <section style={{ background: '#080808', color: '#fff', textAlign: 'center', padding: '60px 6vw 50px' }}>
         <p style={{ fontSize: 10, letterSpacing: '0.5em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 12 }}>JASS</p>
-        <h1 style={{ fontSize: 'clamp(1.8rem,3vw,2.8rem)', fontWeight: 300, margin: 0 }}>Ma Commande</h1>
+        <h1 style={{ fontSize: 'clamp(1.8rem,3vw,2.8rem)', fontWeight: 300, margin: 0 }}>Commande</h1>
       </section>
 
       {/* STEPPER */}
@@ -126,14 +150,14 @@ export default function CheckoutPage() {
                 <div>
                   <label style={labelStyle}>Prénom *</label>
                   <input value={form.firstName} onChange={e => update('firstName', e.target.value)}
-                    style={inputStyle} placeholder="Votre prénom"
+                    style={inputStyle} placeholder="Ghofrane"
                     onFocus={e => e.target.style.borderColor = '#111'}
                     onBlur={e => e.target.style.borderColor = '#e8e8e8'} />
                 </div>
                 <div>
                   <label style={labelStyle}>Nom *</label>
                   <input value={form.lastName} onChange={e => update('lastName', e.target.value)}
-                    style={inputStyle} placeholder="Votre Nom"
+                    style={inputStyle} placeholder="Ben Achour"
                     onFocus={e => e.target.style.borderColor = '#111'}
                     onBlur={e => e.target.style.borderColor = '#e8e8e8'} />
                 </div>
@@ -320,14 +344,14 @@ export default function CheckoutPage() {
 
               {/* Articles */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-                {items.map((item: { id: Key | null | undefined; image: any; name: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; qty: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; price: any; }) => (
+                {items.map((item: { id: Key | null | undefined; image: any; name: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; qty: number; price: any; }) => (
                   <div key={item.id} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                     <div style={{ width: 48, height: 56, background: '#f0f0f0', flexShrink: 0, overflow: 'hidden' }}>
-                      <img src={item.image || '/images/placeholder.jpg'} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={item.image || '/images/placeholder.jpg'} alt={String(item.name)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 13, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
-                      <p style={{ fontSize: 11, color: '#aaa', margin: 0 }}>× {item.qty}</p>
+                      <p style={{ fontSize: 13, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(item.name)}</p>
+                      <p style={{ fontSize: 11, color: '#aaa', margin: 0 }}>× {String(item.qty)}</p>
                     </div>
                     <p style={{ fontSize: 13, margin: 0, whiteSpace: 'nowrap' }}>{(Number(item.price) * item.qty).toFixed(2)} TND</p>
                   </div>
