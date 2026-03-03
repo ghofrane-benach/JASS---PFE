@@ -1,117 +1,70 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-
-interface CartProduct {
+export interface CartItem {
   id: string;
   name: string;
   price: number;
-  images?: string[];
-  category?: { name: string };
-}
-
-interface CartItem {
-  id: string;
-  productId: string;
-  product: CartProduct;
-  quantity: number;
-  unitPrice: number;
-}
-
-interface Cart {
-  id: string;
-  items: CartItem[];
-  total: number;
-  itemCount: number;
+  image: string;
+  qty: number;
 }
 
 interface CartContextType {
-  cart: Cart | null;
-  loading: boolean;
-  addItem: (productId: string, quantity?: number) => Promise<void>;
-  updateItem: (itemId: string, quantity: number) => Promise<void>;
-  removeItem: (itemId: string) => Promise<void>;
-  clearCart: () => Promise<void>;
-  refresh: () => Promise<void>;
+  items: CartItem[];
+  totalQty: number;
+  addItem: (item: Omit<CartItem, 'qty'>) => void;
+  removeItem: (id: string) => void;
+  updateQty: (id: string, delta: number) => void;
+  clearCart: () => void;
+  isOpen: boolean;
+  setIsOpen: (v: boolean) => void;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [cart, setCart]     = useState<Cart | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [items,   setItems]   = useState<CartItem[]>([]);
+  const [isOpen,  setIsOpen]  = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const getToken = () =>
-    typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-
-  const headers = () => ({
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${getToken()}`,
-  });
-
-  const refresh = useCallback(async () => {
-    const token = getToken();
-    if (!token) { setCart(null); return; }
-    try {
-      setLoading(true);
-      const res = await fetch(`${API_URL}/cart`, { headers: headers() });
-      if (res.ok) setCart(await res.json());
-      else setCart(null);
-    } catch { setCart(null); }
-    finally { setLoading(false); }
+  useEffect(() => {
+    const stored = localStorage.getItem('cart');
+    if (stored) setItems(JSON.parse(stored));
+    setMounted(true);
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  function save(next: CartItem[]) {
+    setItems(next);
+    localStorage.setItem('cart', JSON.stringify(next));
+  }
 
-  const addItem = async (productId: string, quantity = 1) => {
-    const token = getToken();
-    if (!token) { window.location.href = '/login'; return; }
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/cart/items`, {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({ productId, quantity }),
-      });
-      if (res.ok) setCart(await res.json());
-    } finally { setLoading(false); }
-  };
+  function addItem(item: Omit<CartItem, 'qty'>) {
+    setItems(prev => {
+      const next = [...prev];
+      const existing = next.find(i => i.id === item.id);
+      if (existing) existing.qty += 1;
+      else next.push({ ...item, qty: 1 });
+      localStorage.setItem('cart', JSON.stringify(next));
+      return next;
+    });
+    setIsOpen(true);
+  }
 
-  const updateItem = async (itemId: string, quantity: number) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/cart/items/${itemId}`, {
-        method: 'PATCH',
-        headers: headers(),
-        body: JSON.stringify({ quantity }),
-      });
-      if (res.ok) setCart(await res.json());
-    } finally { setLoading(false); }
-  };
+  function removeItem(id: string) { save(items.filter(i => i.id !== id)); }
 
-  const removeItem = async (itemId: string) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/cart/items/${itemId}`, {
-        method: 'DELETE',
-        headers: headers(),
-      });
-      if (res.ok) setCart(await res.json());
-    } finally { setLoading(false); }
-  };
+  function updateQty(id: string, delta: number) {
+    save(items.map(i => i.id === id ? { ...i, qty: Math.max(1, i.qty + delta) } : i));
+  }
 
-  const clearCart = async () => {
-    setLoading(true);
-    try {
-      await fetch(`${API_URL}/cart`, { method: 'DELETE', headers: headers() });
-      setCart(prev => prev ? { ...prev, items: [], total: 0, itemCount: 0 } : null);
-    } finally { setLoading(false); }
-  };
+  function clearCart() { save([]); }
+
+  const totalQty = items.reduce((s, i) => s + i.qty, 0);
+
+  if (!mounted) return <>{children}</>;
 
   return (
-    <CartContext.Provider value={{ cart, loading, addItem, updateItem, removeItem, clearCart, refresh }}>
+    <CartContext.Provider value={{ items, totalQty, addItem, removeItem, updateQty, clearCart, isOpen, setIsOpen }}>
       {children}
     </CartContext.Provider>
   );
@@ -119,6 +72,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 export function useCart() {
   const ctx = useContext(CartContext);
-  if (!ctx) throw new Error('useCart must be used inside CartProvider');
+  if (!ctx) return { items: [], totalQty: 0, addItem: () => {}, removeItem: () => {}, updateQty: () => {}, clearCart: () => {}, isOpen: false, setIsOpen: () => {} } as any;
   return ctx;
 }

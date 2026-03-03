@@ -1,392 +1,133 @@
 'use client';
 
-import { useCart } from '@/context/CartContext';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useCart } from '@/context/CartContext';
+import { Key, ReactElement, JSXElementConstructor, ReactNode, ReactPortal } from 'react';
 
 export default function CartPage() {
-  const { cart, loading, updateItem, removeItem, clearCart } = useCart();
-  const [removing, setRemoving] = useState<string | null>(null);
+  const { items, totalQty, updateQty, removeItem, clearCart } = useCart();
 
-  const handleRemove = async (itemId: string) => {
-    setRemoving(itemId);
-    await removeItem(itemId);
-    setRemoving(null);
-  };
-
-  const handleQty = async (itemId: string, qty: number) => {
-    if (qty < 1) return;
-    await updateItem(itemId, qty);
-  };
-
-  // ── EMPTY / LOADING ──────────────────────────────────────────────────
-  if (loading && !cart) {
-    return (
-      <div style={styles.center}>
-        <div style={styles.spinner} />
-        <p style={styles.loadingText}>Chargement du panier…</p>
-        <style>{spinAnim}</style>
-      </div>
-    );
-  }
-
-  if (!cart || cart.items.length === 0) {
-    return (
-      <div style={styles.center}>
-        <p style={{ fontSize: 56, marginBottom: 20 }}>🛒</p>
-        <h2 style={styles.emptyTitle}>Votre panier est vide</h2>
-        <p style={styles.emptySub}>Découvrez nos collections et ajoutez vos favoris</p>
-        <Link href="/products" style={styles.ctaBtn}>Voir les produits</Link>
-      </div>
-    );
-  }
+  const subtotal = items.reduce((s, i) => s + Number(i.price) * i.qty, 0);
+  const shipping = subtotal > 0 ? 8 : 0;
+  const total     = subtotal + shipping;
 
   return (
-    <div style={styles.page}>
-      <style>{spinAnim}</style>
+    <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", background: '#fff', minHeight: '100vh' }}>
 
-      {/* ── HEADER ──────────────────────────────────────────────── */}
-      <section style={styles.header}>
-        <p style={styles.headerSub}>JASS — Panier</p>
-        <h1 style={styles.headerTitle}>Mon Panier</h1>
-        <p style={styles.headerCount}>{cart.itemCount} article{cart.itemCount > 1 ? 's' : ''}</p>
+      {/* HERO */}
+      <section style={{ background: '#080808', color: '#fff', textAlign: 'center', padding: '72px 6vw 60px' }}>
+        <p style={{ fontSize: 10, letterSpacing: '0.5em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>JASS</p>
+        <h1 style={{ fontSize: 'clamp(2rem,4vw,3.5rem)', fontWeight: 300, margin: 0 }}>Mon Panier</h1>
+        {totalQty > 0 && (
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 12, letterSpacing: '0.1em' }}>
+            {totalQty} article{totalQty > 1 ? 's' : ''}
+          </p>
+        )}
       </section>
 
-      {/* ── CONTENT ─────────────────────────────────────────────── */}
-      <div style={styles.content}>
+      {items.length === 0 ? (
+        <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'center', padding: '100px 24px' }}>
+          <div style={{ fontSize: 64, marginBottom: 24 }}>🛍️</div>
+          <h2 style={{ fontSize: 22, fontWeight: 300, marginBottom: 12 }}>Votre panier est vide</h2>
+          <p style={{ fontSize: 14, color: '#888', marginBottom: 40, lineHeight: 1.7 }}>
+            Vous n'avez pas encore ajouté de produits.
+          </p>
+          <Link href="/products" style={{
+            display: 'inline-block', padding: '14px 44px',
+            background: '#111', color: '#fff', textDecoration: 'none',
+            fontSize: 11, letterSpacing: '0.25em', textTransform: 'uppercase',
+          }}>
+            Découvrir la collection
+          </Link>
+        </div>
+      ) : (
+        <div style={{ maxWidth: 1300, margin: '0 auto', padding: '60px 6vw', display: 'grid', gridTemplateColumns: '1fr 380px', gap: 60 }}>
 
-        {/* ── ITEMS LIST ─────────────────────────────────────────── */}
-        <div style={styles.itemsList}>
-
-          {/* Clear button */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-            <button onClick={clearCart} style={styles.clearBtn}>
-              Vider le panier
-            </button>
-          </div>
-
-          {cart.items.map(item => (
-            <div key={item.id} style={{
-              ...styles.itemRow,
-              opacity: removing === item.id ? 0.4 : 1,
-              transition: 'opacity 0.3s',
-            }}>
-              {/* Image */}
-              <div style={styles.imgBox}>
-                <img
-                  src={item.product.images?.[0] ?? '/images/placeholder.jpg'}
-                  alt={item.product.name}
-                  style={styles.img}
-                />
-              </div>
-
-              {/* Info */}
-              <div style={styles.itemInfo}>
-                {item.product.category && (
-                  <p style={styles.itemCat}>{item.product.category.name}</p>
-                )}
-                <h3 style={styles.itemName}>{item.product.name}</h3>
-                <p style={styles.itemPrice}>
-                  {Number(item.unitPrice).toFixed(2)} <span style={{ fontSize: 11, color: '#aaa' }}>TND</span>
-                </p>
-              </div>
-
-              {/* Quantity controls */}
-              <div style={styles.qtyBox}>
-                <button
-                  style={styles.qtyBtn}
-                  onClick={() => handleQty(item.id, item.quantity - 1)}
-                  disabled={item.quantity <= 1 || loading}
-                >−</button>
-                <span style={styles.qtyNum}>{item.quantity}</span>
-                <button
-                  style={styles.qtyBtn}
-                  onClick={() => handleQty(item.id, item.quantity + 1)}
-                  disabled={loading}
-                >+</button>
-              </div>
-
-              {/* Subtotal */}
-              <div style={styles.subtotal}>
-                <p style={styles.subtotalPrice}>
-                  {(Number(item.unitPrice) * item.quantity).toFixed(2)}
-                  <span style={{ fontSize: 11, color: '#aaa', marginLeft: 4 }}>TND</span>
-                </p>
-              </div>
-
-              {/* Remove */}
-              <button
-                onClick={() => handleRemove(item.id)}
-                style={styles.removeBtn}
-                disabled={loading}
-                title="Supprimer"
-              >✕</button>
+          {/* LISTE */}
+          <div>
+            <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr auto auto auto', gap: 16, paddingBottom: 12, borderBottom: '1px solid #f0f0f0', fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#aaa' }}>
+              <span /><span>Produit</span><span style={{ textAlign: 'center' }}>Qté</span><span style={{ textAlign: 'right' }}>Prix</span><span />
             </div>
-          ))}
+
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {items.map((item: { id: Key | null | undefined; image: any; name: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; price: any; qty: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; }) => (
+                <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr auto auto auto', gap: 16, alignItems: 'center', padding: '20px 0', borderBottom: '1px solid #f5f5f5' }}>
+                  <Link href={`/products/${String(item.id)}`}>
+                    <div style={{ width: 80, height: 96, background: '#f8f8f8', overflow: 'hidden' }}>
+                      <img src={item.image || '/images/placeholder.jpg'} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  </Link>
+                  <div>
+                    <p style={{ fontSize: 15, fontWeight: 300, margin: '0 0 4px' }}>{item.name}</p>
+                    <p style={{ fontSize: 13, color: '#aaa', margin: 0 }}>{Number(item.price).toFixed(2)} TND / unité</p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e8e8e8' }}>
+                    <button onClick={() => updateQty(item.id, -1)} style={{ width: 32, height: 32, background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>−</button>
+                    <span style={{ width: 32, textAlign: 'center', fontSize: 14 }}>{item.qty}</span>
+                    <button onClick={() => updateQty(item.id, +1)} style={{ width: 32, height: 32, background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}>+</button>
+                  </div>
+                  <p style={{ fontSize: 14, fontWeight: 300, textAlign: 'right', margin: 0, whiteSpace: 'nowrap' }}>
+                    {(Math.round(Number(item.price) * item.qty * 100) / 100).toFixed(2)} <span style={{ fontSize: 11, color: '#aaa' }}>TND</span>
+                  </p>
+                  <button onClick={() => removeItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: 20, padding: 0 }}>×</button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 20 }}>
+              <Link href="/products" style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#888', textDecoration: 'none', borderBottom: '1px solid #ddd', paddingBottom: 2 }}>
+                ← Continuer les achats
+              </Link>
+              <button onClick={clearCart} style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#ccc', background: 'none', border: 'none', cursor: 'pointer' }}>
+                Vider le panier
+              </button>
+            </div>
+          </div>
+
+          {/* RÉSUMÉ */}
+          <div>
+            <div style={{ background: '#f9f9f9', padding: 32, position: 'sticky', top: 88 }}>
+              <h2 style={{ fontSize: 13, letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: 28, paddingBottom: 16, borderBottom: '1px solid #ebebeb', fontWeight: 400 }}>
+                Résumé
+              </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                  <span style={{ color: '#666' }}>Sous-total ({totalQty} articles)</span>
+                  <span>{subtotal.toFixed(2)} TND</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                  <span style={{ color: '#666' }}>Livraison</span>
+                  <span style={{ color: '#4a9e6f' }}>{shipping.toFixed(2)} TND</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderTop: '1px solid #ebebeb', marginBottom: 24 }}>
+                <span style={{ fontSize: 15 }}>Total</span>
+                <span style={{ fontSize: 18, fontWeight: 300 }}>{total.toFixed(2)} <span style={{ fontSize: 13, color: '#888' }}>TND</span></span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+                <input type="text" placeholder="Code promo"
+                  style={{ flex: 1, padding: '10px 12px', border: '1px solid #e8e8e8', background: '#fff', fontSize: 13, outline: 'none', fontFamily: 'inherit' }} />
+                <button style={{ padding: '10px 16px', background: '#111', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'inherit' }}>OK</button>
+              </div>
+              <Link href="/checkout" style={{ display: 'block', padding: '14px', background: '#111', color: '#fff', textAlign: 'center', textDecoration: 'none', fontSize: 11, letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: 10 }}>
+                Commander
+              </Link>
+              <Link href="/login" style={{ display: 'block', padding: '14px', background: 'transparent', color: '#111', textAlign: 'center', textDecoration: 'none', fontSize: 11, letterSpacing: '0.25em', textTransform: 'uppercase', border: '1px solid #111' }}>
+                Se connecter pour commander
+              </Link>
+              <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #ebebeb', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[['🚚','Livraison partout en Tunisie'],['🔒','Paiement 100% sécurisé'],['🔄','Échange facile sous 7 jours']].map(([icon, text]) => (
+                  <p key={String(text)} style={{ fontSize: 12, color: '#888', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>{icon}</span>{text}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
+      )}
 
-        {/* ── ORDER SUMMARY ────────────────────────────────────────── */}
-        <div style={styles.summary}>
-          <h2 style={styles.summaryTitle}>Récapitulatif</h2>
-
-          <div style={styles.summaryRow}>
-            <span>Sous-total ({cart.itemCount} articles)</span>
-            <span>{cart.total.toFixed(2)} TND</span>
-          </div>
-          <div style={styles.summaryRow}>
-            <span>Livraison</span>
-            <span style={{ color: '#2e7d32' }}>Livraison à 8DT</span>
-          </div>
-          <div style={{ ...styles.summaryRow, borderTop: '1px solid #e8e8e8', paddingTop: 16, marginTop: 8 }}>
-            <span style={{ fontWeight: 600, fontSize: 15 }}>Total</span>
-            <span style={{ fontWeight: 600, fontSize: 18 }}>{cart.total.toFixed(2)} TND</span>
-          </div>
-
-          <Link href="/checkout" style={styles.checkoutBtn}>
-            Passer la commande →
-          </Link>
-
-          <Link href="/products" style={styles.continueBtn}>
-            ← Continuer les achats
-          </Link>
-        </div>
-
-      </div>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&display=swap');`}</style>
     </div>
   );
 }
-
-// ── STYLES ──────────────────────────────────────────────────────────────
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    fontFamily: "'Cormorant Garamond', Georgia, serif",
-    background: '#fff',
-    minHeight: '100vh',
-  },
-  header: {
-    background: '#080808',
-    color: '#fff',
-    padding: '72px 6vw 60px',
-    textAlign: 'center',
-  },
-  headerSub: {
-    fontSize: 10,
-    letterSpacing: '0.5em',
-    textTransform: 'uppercase' as const,
-    color: 'rgba(255,255,255,0.3)',
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 'clamp(2rem, 5vw, 3.5rem)' as any,
-    fontWeight: 300,
-    margin: 0,
-  },
-  headerCount: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 12,
-    marginTop: 14,
-    letterSpacing: '0.1em',
-  },
-  content: {
-    maxWidth: 1200,
-    margin: '0 auto',
-    padding: '60px 6vw',
-    display: 'grid',
-    gridTemplateColumns: '1fr 360px',
-    gap: 48,
-    alignItems: 'start',
-  },
-  itemsList: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: 0,
-  },
-  itemRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 20,
-    padding: '20px 0',
-    borderBottom: '1px solid #f0f0f0',
-  },
-  imgBox: {
-    width: 90,
-    height: 110,
-    flexShrink: 0,
-    background: '#f8f8f8',
-    overflow: 'hidden',
-  },
-  img: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover' as const,
-  },
-  itemInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  itemCat: {
-    fontSize: 9,
-    letterSpacing: '0.3em',
-    textTransform: 'uppercase' as const,
-    color: '#bbb',
-    marginBottom: 6,
-  },
-  itemName: {
-    fontSize: 15,
-    fontWeight: 400,
-    margin: '0 0 8px',
-    lineHeight: 1.3,
-  },
-  itemPrice: {
-    fontSize: 14,
-    fontWeight: 300,
-    color: '#555',
-  },
-  qtyBox: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 0,
-    border: '1px solid #e8e8e8',
-  },
-  qtyBtn: {
-    width: 32,
-    height: 32,
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: 16,
-    color: '#111',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qtyNum: {
-    width: 36,
-    textAlign: 'center' as const,
-    fontSize: 14,
-    borderLeft: '1px solid #e8e8e8',
-    borderRight: '1px solid #e8e8e8',
-    lineHeight: '32px',
-  },
-  subtotal: {
-    minWidth: 90,
-    textAlign: 'right' as const,
-  },
-  subtotalPrice: {
-    fontSize: 15,
-    fontWeight: 500,
-  },
-  removeBtn: {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    color: '#bbb',
-    fontSize: 12,
-    padding: 8,
-    transition: 'color 0.2s',
-  },
-  clearBtn: {
-    background: 'none',
-    border: '1px solid #e0e0e0',
-    cursor: 'pointer',
-    fontSize: 11,
-    letterSpacing: '0.1em',
-    color: '#999',
-    padding: '6px 16px',
-    fontFamily: 'inherit',
-  },
-  summary: {
-    border: '1px solid #f0f0f0',
-    padding: '32px',
-    position: 'sticky' as const,
-    top: 88,
-  },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: 400,
-    marginBottom: 24,
-    letterSpacing: '0.05em',
-  },
-  summaryRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: 13,
-    color: '#555',
-    marginBottom: 12,
-  },
-  checkoutBtn: {
-    display: 'block',
-    width: '100%',
-    padding: '14px 0',
-    background: '#111',
-    color: '#fff',
-    textAlign: 'center' as const,
-    textDecoration: 'none',
-    fontSize: 11,
-    letterSpacing: '0.2em',
-    textTransform: 'uppercase' as const,
-    fontFamily: 'inherit',
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  continueBtn: {
-    display: 'block',
-    textAlign: 'center' as const,
-    textDecoration: 'none',
-    fontSize: 11,
-    letterSpacing: '0.1em',
-    color: '#888',
-    fontFamily: 'inherit',
-  },
-  center: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '60vh',
-    padding: '60px 6vw',
-    fontFamily: "'Cormorant Garamond', Georgia, serif",
-    textAlign: 'center' as const,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: 300,
-    margin: '0 0 12px',
-  },
-  emptySub: {
-    fontSize: 13,
-    color: '#aaa',
-    marginBottom: 32,
-  },
-  ctaBtn: {
-    display: 'inline-block',
-    padding: '12px 40px',
-    background: '#111',
-    color: '#fff',
-    textDecoration: 'none',
-    fontSize: 11,
-    letterSpacing: '0.2em',
-    textTransform: 'uppercase' as const,
-    fontFamily: 'inherit',
-  },
-  spinner: {
-    width: 36,
-    height: 36,
-    border: '1px solid #ddd',
-    borderTop: '1px solid #111',
-    borderRadius: '50%',
-    animation: 'spin 0.8s linear infinite',
-    marginBottom: 20,
-  },
-  loadingText: {
-    fontSize: 11,
-    letterSpacing: '0.3em',
-    color: '#aaa',
-    textTransform: 'uppercase' as const,
-  },
-};
-
-const spinAnim = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&display=swap');
-  @keyframes spin { to { transform: rotate(360deg); } }
-`;

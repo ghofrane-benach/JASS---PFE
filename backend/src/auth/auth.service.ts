@@ -20,19 +20,19 @@ export class AuthService {
     password: string;
     phone?: string;
   }) {
-    // Vérifier si email déjà utilisé
     const existing = await this.userRepository.findOne({ where: { email: dto.email } });
     if (existing) throw new ConflictException('Cet email est déjà utilisé');
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
     const user = this.userRepository.create({
-      first_name: dto.firstName,
-      last_name:  dto.lastName,
+      firstName: dto.firstName,
+      lastName:  dto.lastName,
+      name:      `${dto.firstName} ${dto.lastName}`,
       email:     dto.email,
       phone:     dto.phone,
       password:  hashedPassword,
-    } as any);
+    });
 
     const saved = await this.userRepository.save(user);
     const { password, ...result } = saved as any;
@@ -50,7 +50,14 @@ export class AuthService {
     const access_token = this.jwtService.sign(payload);
 
     const { password: _, ...userWithoutPassword } = user as any;
-    return { access_token, user: userWithoutPassword };
+
+    return {
+      access_token,
+      user: {
+        ...userWithoutPassword,
+        name: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email,
+      },
+    };
   }
 
   async validateUser(userId: string) {

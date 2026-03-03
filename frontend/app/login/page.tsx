@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-
+import { signIn } from 'next-auth/react';
+import { label } from 'framer-motion/client';
 export const dynamic = 'force-dynamic';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -22,14 +23,24 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || 'Email ou mot de passe incorrect');
+
+      // Lire la réponse comme texte d'abord pour éviter l'erreur JSON
+      const text = await res.text();
+      let data: any = {};
+      try { data = JSON.parse(text); } catch {
+        throw new Error('Erreur serveur — vérifiez que le backend est démarré');
       }
-      const { access_token, user } = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          Array.isArray(data.message) ? data.message[0] : (data.message || 'Email ou mot de passe incorrect')
+        );
+      }
+
+      const { access_token, user } = data;
       localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(user));
-      window.location.href = '/';
+      window.location.href = '/account';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
     } finally {
@@ -47,7 +58,7 @@ export default function LoginPage() {
       {/* ── LEFT PANEL — image déco ───────────────────── */}
       <div style={{
         flex: 1, display: 'none',
-        backgroundImage: "url('/images/scarfs/bley.jpeg')",
+        backgroundImage: "url('/images/scarfs/violet.jpeg')",
         backgroundSize: 'cover', backgroundPosition: 'center',
         position: 'relative',
       }} className="login-left">
@@ -155,9 +166,8 @@ export default function LoginPage() {
           </div>
 
           {/* Social buttons */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <SocialBtn icon="google" label="Google" />
-            <SocialBtn icon="facebook" label="Facebook" />
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <SocialBtn icon="google" label="Google" onClick={() => signIn('google', { callbackUrl: '/account' })} />
           </div>
 
         </div>
@@ -197,7 +207,9 @@ function InputField({ id, type, value, onChange, placeholder, required }: {
   );
 }
 
-function SocialBtn({ icon, label }: { icon: 'google' | 'facebook'; label: string }) {
+function SocialBtn({ icon, label, onClick }: {
+  icon: string; label: string; onClick: () => void;
+}) {
   const [hov, setHov] = useState(false);
   return (
     <button style={{
@@ -207,7 +219,7 @@ function SocialBtn({ icon, label }: { icon: 'google' | 'facebook'; label: string
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
       transition: 'border-color 0.2s',
     }}
-      onMouseOver={() => setHov(true)} onMouseOut={() => setHov(false)}>
+      onClick={onClick} onMouseOver={() => setHov(true)} onMouseOut={() => setHov(false)}>
       {icon === 'google' ? (
         <svg width="16" height="16" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -217,7 +229,7 @@ function SocialBtn({ icon, label }: { icon: 'google' | 'facebook'; label: string
         </svg>
       ) : (
         <svg width="16" height="16" viewBox="0 0 24 24">
-          <path fill="#1877F2" d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.852V15.467h-3.604V12h3.604V9.356c0-3.593 2.121-5.532 5.193-5.532 1.483 0 2.688.109 3.063.157v3.51h-2.11c-1.659 0-1.975.793-1.975 1.945V12h3.95l-.525 3.467h-3.425v8.385C19.612 23.006 24 18.067 24 12z"/>
+          <path fill="#000" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
         </svg>
       )}
       {label}

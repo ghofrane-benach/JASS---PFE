@@ -5,22 +5,17 @@ import { UsersModule } from './users/users.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ProductsModule } from './products/products.module';
 import { AuthModule } from './auth/auth.module';
+import { OrdersModule } from './orders/orders.module';
 
 @Module({
   imports: [
-    // 1. Charger les variables d'environnement en premier
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '.env',
-    }),
-
-    // 2. TypeORM avec ConfigService (lecture du .env)
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        host: configService.get<string>('DB_HOST', 'db'),
-        port: configService.get<number>('DB_PORT', 5432),
+        host:     configService.get<string>('DB_HOST', 'localhost'),
+        port:     configService.get<number>('DB_PORT', 5432),
         username: configService.get<string>('DB_USERNAME', 'postgres'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME', 'jass_ecommerce'),
@@ -31,11 +26,11 @@ import { AuthModule } from './auth/auth.module';
       }),
       inject: [ConfigService],
     }),
-
     UsersModule,
     CategoriesModule,
     ProductsModule,
-     AuthModule,
+    AuthModule,
+    OrdersModule,
   ],
 })
 export class AppModule {}

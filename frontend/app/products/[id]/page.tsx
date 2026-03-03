@@ -1,256 +1,340 @@
-// apps/frontend/app/products/[id]/page.tsx
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import { useCart } from '@/context/CartContext';
 
-export const dynamic = 'force-dynamic' ;
+export const dynamic = 'force-dynamic';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  description?: string;
+  images?: string[];
+  stock: number;
+  status?: string;
+  category?: { name: string; slug: string };
+  brand?: string;
+  weight?: number;
+}
 
 export default function ProductDetailPage() {
-  const params = useParams();
+  const params   = useParams();
+  const router   = useRouter();
+  const { addItem } = useCart();
+
   const productId = params.id as string;
-  const [product, setProduct] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [quantity, setQuantity] = useState(1);
 
-  // Données de produits (à remplacer par l'API)
-  const sampleProducts = [
-    {
-      id: '1',
-      name: 'Mikasa Red Scarf',
-      price: 40,
-      image: '/images/scarfs/red.jpeg',
-      description: 'Mikasa Scarf - More than a red scarf, a true symbol of love and care. Inspired by Mikasa ❤️',
-      category: 'Scarfs',
-      details: 'Dimension 50*200 .',
-      composition: 'Cachemire',
-      images: [
-        '/images/scarfs/red2.jpg',
-        '/images/scarfs/rouge1.jpeg',
-        '/images/scarfs/rouge.jpeg',
-      ],
-    },
-    {
-      id: '2',
-      name: 'Browny Scard ',
-      price: 40,
-      image: '/images/scarfs/jaune.jpeg',
-      description: 'Brown Sugar Glow 💛🤎',
-      category: 'clothing',
-      details: 'Dimension 50*200.',
-      composition: '100% Bouclette',
-      images: [
-        '/images/scarfs/jaune1.jpeg',
-        '/images/scarfs/jaune2.jpeg',
-      ],
-    },
-    {
-      id: '3',
-      name: 'Earing Heart',
-      price: 30,
-      image: '/images/accessoires/coeur.jpeg',
-      description: 'Boucle en Acier inoxydable',
-      category: 'accessories',
-      details: 'Focus on the Shine.\n Adorn yourself with these stunning intricate earrings Their elegant design catches the light perfectly adding a touch of class to any look.',
-      composition: '100% soie naturelle',
-      images: [
-        '/images/accessoires/coeur1.jpeg',
-        '/images/accessoires/coeur2.jpeg',
-      ],
-    },
-    {
-      id: '4',
-      name: 'Rose necklace  ',
-      price: 30,
-      image: '/images/accessoires/collier.jpeg',
-      description: 'Necklace ',
-      category: 'accessories',
-      details: 'A little spice, Tunisian style 🌶️.',
-      composition: 'Acier inoxydable',
-      images: [
-        '/images/accessoires/collier1.jpeg',
-        '/images/accessoires/collier.jpeg',
-      ],
-    }
-  ];
+  const [product, setProduct]     = useState<Product | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [quantity, setQuantity]   = useState(1);
+  const [mainImg, setMainImg]     = useState(0);
+  const [cartStatus, setCartStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [related, setRelated]     = useState<Product[]>([]);
 
+  // ── Fetch produit depuis l'API ────────────────────────────────────────
   useEffect(() => {
-    const foundProduct = sampleProducts.find(p => p.id === productId);
-    if (foundProduct) {
-      setProduct(foundProduct);
-    } else {
-      setProduct(null);
-    }
-    setLoading(false);
+    if (!productId) return;
+    setLoading(true);
+    fetch(`${API_URL}/products/${productId}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Produit introuvable');
+        return res.json();
+      })
+      .then(data => {
+        setProduct(data);
+        // Fetch produits similaires
+        if (data.category?.slug) {
+          fetch(`${API_URL}/products?category=${data.category.slug}&limit=4`)
+            .then(r => r.json())
+            .then(d => {
+              const list = Array.isArray(d) ? d : (d.data ?? []);
+              setRelated(list.filter((p: Product) => p.id !== productId).slice(0, 3));
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => setProduct(null))
+      .finally(() => setLoading(false));
   }, [productId]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-black mx-auto mb-4"></div>
-          <p className="text-gray-600 font-serif">Chargement du produit...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!product) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 font-serif">Produit non trouvé</p>
-          <Link href="/products" className="text-black font-serif hover:text-nude-500 mt-4 block">
-            ← Retour à la collection
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const addToCart = () => {
-    // Ajouter au panier (à implémenter)
-    alert(`Ajouté au panier : ${product.name} x ${quantity}`);
+  // ── Ajouter au panier ────────────────────────────────────────────────
+  const handleAddToCart = async () => {
+    if (!product) return;
+    setCartStatus('loading');
+    try {
+      await addItem(product.id, quantity);
+      setCartStatus('success');
+      setTimeout(() => setCartStatus('idle'), 2500);
+    } catch {
+      setCartStatus('error');
+      setTimeout(() => setCartStatus('idle'), 2500);
+    }
   };
 
-  return (
-    <div className="bg-white min-h-screen">
-      {/* Hero Section */}
-      <section className="bg-black text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl font-serif font-light">{product.name}</h1>
-          <p className="text-xl text-gray-300 mt-4">{product.description}</p>
-        </div>
-      </section>
+  // ── LOADING ──────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div style={styles.center}>
+        <div style={styles.spinner} />
+        <p style={styles.loadingText}>Chargement…</p>
+        <style>{anim}</style>
+      </div>
+    );
+  }
 
-      {/* Product Images */}
-      <section className="py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {product.images.map((image: string, index: number) => (
-                <div key={index} className="aspect-square bg-gray-100">
-                  <Image
-                    src={image}
-                    alt={`${product.name} - ${index + 1}`}
-                    width={600}
-                    height={600}
-                    className="w-full h-full object-cover"
+  // ── NOT FOUND ────────────────────────────────────────────────────────
+  if (!product) {
+    return (
+      <div style={styles.center}>
+        <p style={{ fontSize: 48, marginBottom: 16 }}>😕</p>
+        <h2 style={{ fontSize: 22, fontWeight: 300, marginBottom: 12 }}>Produit introuvable</h2>
+        <Link href="/products" style={styles.ctaBtn}>← Retour à la collection</Link>
+      </div>
+    );
+  }
+
+  const images = product.images?.length ? product.images : ['/images/placeholder.jpg'];
+
+  // ── BUTTON LABEL ─────────────────────────────────────────────────────
+  const btnLabel = {
+    idle:    'Ajouter au panier',
+    loading: 'Ajout en cours…',
+    success: '✓ Ajouté au panier !',
+    error:   'Erreur — Réessayer',
+  }[cartStatus];
+
+  const btnColor = {
+    idle:    '#111',
+    loading: '#555',
+    success: '#1e8449',
+    error:   '#c0392b',
+  }[cartStatus];
+
+  return (
+    <div style={styles.page}>
+      <style>{anim}</style>
+
+      {/* ── BREADCRUMB ─────────────────────────────────────────────── */}
+      <div style={styles.breadcrumb}>
+        <Link href="/" style={styles.breadLink}>Accueil</Link>
+        <span style={styles.breadSep}>/</span>
+        <Link href="/products" style={styles.breadLink}>Collection</Link>
+        {product.category && <>
+          <span style={styles.breadSep}>/</span>
+          <Link href={`/products?category=${product.category.slug}`} style={styles.breadLink}>
+            {product.category.name}
+          </Link>
+        </>}
+        <span style={styles.breadSep}>/</span>
+        <span style={{ color: '#111' }}>{product.name}</span>
+      </div>
+
+      {/* ── MAIN CONTENT ───────────────────────────────────────────── */}
+      <div style={styles.main}>
+
+        {/* ── LEFT : IMAGES ────────────────────────────────────────── */}
+        <div style={styles.imagesCol}>
+          {/* Main image */}
+          <div style={styles.mainImgBox}>
+            <img
+              src={images[mainImg]}
+              alt={product.name}
+              style={styles.mainImg}
+            />
+          </div>
+          {/* Thumbnails */}
+          {images.length > 1 && (
+            <div style={styles.thumbRow}>
+              {images.map((img, i) => (
+                <div
+                  key={i}
+                  onClick={() => setMainImg(i)}
+                  style={{
+                    ...styles.thumb,
+                    border: i === mainImg ? '2px solid #111' : '2px solid transparent',
+                  }}
+                >
+                  <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── RIGHT : INFO ─────────────────────────────────────────── */}
+        <div style={styles.infoCol}>
+
+          {/* Category */}
+          {product.category && (
+            <p style={styles.catLabel}>{product.category.name}</p>
+          )}
+
+          {/* Name */}
+          <h1 style={styles.productName}>{product.name}</h1>
+
+          {/* Price */}
+          <p style={styles.price}>
+            {Number(product.price).toFixed(2)}
+            <span style={styles.currency}> TND</span>
+          </p>
+
+          {/* Description */}
+          {product.description && (
+            <p style={styles.description}>{product.description}</p>
+          )}
+
+          <div style={styles.divider} />
+
+          {/* Stock */}
+          <p style={{
+            fontSize: 12, letterSpacing: '0.1em', marginBottom: 20,
+            color: product.stock > 5 ? '#2e7d32' : product.stock > 0 ? '#e65100' : '#c0392b',
+          }}>
+            {product.stock > 5 ? '● En stock' : product.stock > 0 ? `● Plus que ${product.stock} en stock` : '● Rupture de stock'}
+          </p>
+
+          {/* Quantity */}
+          <div style={styles.qtyRow}>
+            <span style={styles.qtyLabel}>Quantité</span>
+            <div style={styles.qtyControls}>
+              <button
+                style={styles.qtyBtn}
+                onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                disabled={quantity <= 1}
+              >−</button>
+              <span style={styles.qtyNum}>{quantity}</span>
+              <button
+                style={styles.qtyBtn}
+                onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
+                disabled={quantity >= product.stock}
+              >+</button>
+            </div>
+          </div>
+
+          {/* Add to cart button */}
+          <button
+            onClick={handleAddToCart}
+            disabled={cartStatus === 'loading' || product.stock === 0}
+            style={{
+              ...styles.addBtn,
+              background: btnColor,
+              cursor: cartStatus === 'loading' ? 'wait' : 'pointer',
+            }}
+          >
+            {cartStatus === 'loading' && <span style={styles.btnSpinner} />}
+            {btnLabel}
+          </button>
+
+          {/* View cart link after success */}
+          {cartStatus === 'success' && (
+            <Link href="/cart" style={styles.viewCartLink}>
+              Voir mon panier →
+            </Link>
+          )}
+
+          <div style={styles.divider} />
+
+          {/* Details */}
+          <div style={styles.details}>
+            {product.brand && (
+              <div style={styles.detailRow}>
+                <span style={styles.detailKey}>Marque</span>
+                <span style={styles.detailVal}>{product.brand}</span>
+              </div>
+            )}
+            {product.weight && (
+              <div style={styles.detailRow}>
+                <span style={styles.detailKey}>Poids</span>
+                <span style={styles.detailVal}>{product.weight} kg</span>
+              </div>
+            )}
+            {product.category && (
+              <div style={styles.detailRow}>
+                <span style={styles.detailKey}>Catégorie</span>
+                <span style={styles.detailVal}>{product.category.name}</span>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── RELATED PRODUCTS ───────────────────────────────────────── */}
+      {related.length > 0 && (
+        <section style={styles.related}>
+          <h2 style={styles.relatedTitle}>Vous aimerez aussi</h2>
+          <div style={styles.relatedGrid}>
+            {related.map(p => (
+              <Link key={p.id} href={`/product/${p.id}`} style={styles.relatedCard}>
+                <div style={styles.relatedImgBox}>
+                  <img
+                    src={p.images?.[0] ?? '/images/placeholder.jpg'}
+                    alt={p.name}
+                    style={styles.relatedImg}
                   />
                 </div>
-              ))}
-            </div>
-
-            <div>
-              <div className="bg-gray-50 p-8">
-                <h2 className="text-2xl font-serif font-light mb-6">
-                  {product.name}
-                </h2>
-                
-                <div className="mb-8">
-                  <p className="text-gray-600 mb-4">{product.details}</p>
-                  
-                  <div className="flex items-center mb-6">
-                    <span className="text-4xl font-serif mr-4">{product.price.toFixed(2)} TND</span>
-                  </div>
-                  
-                  <div className="flex items-center mb-6">
-                    <span className="text-sm font-serif mr-4">Quantité:</span>
-                    <button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="w-8 h-8 border border-gray-300 flex items-center justify-center hover:bg-gray-100"
-                    >
-                      -
-                    </button>
-                    <span className="w-12 text-center font-serif">{quantity}</span>
-                    <button
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="w-8 h-8 border border-gray-300 flex items-center justify-center hover:bg-gray-100"
-                    >
-                      +
-                    </button>
-                  </div>
-                  
-                  <div className="flex space-x-4 mb-6">
-                    <button
-                      onClick={addToCart}
-                      className="px-8 py-4 bg-black text-white font-serif hover:bg-gray-800 transition-colors"
-                    >
-                      Ajouter au panier
-                    </button>
-                    <button className="px-8 py-4 border border-black font-serif hover:bg-black hover:text-white transition-colors">
-                      Favoris
-                    </button>
-                  </div>
-                </div>
-
-                {/* Product Details */}
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-serif mb-4">Détails du produit</h3>
-                  
-                  <div className="space-y-3 text-sm">
-                    <div>
-                      <span className="font-serif">Composition:</span>
-                      <span className="text-gray-600 ml-2">{product.composition}</span>
-                    </div>
-                    <div>
-                      <span className="font-serif">Entretien:</span>
-                      <span className="text-gray-600 ml-2">{product.care}</span>
-                    </div>
-                    <div>
-                      <span className="font-serif">Catégorie:</span>
-                      <span className="text-gray-600 ml-2">
-                        {product.category === 'clothing' ? 'Vêtements' : 
-                         product.category === 'scarfs' ? 'Foulards' : 'Accessoires'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+                <p style={styles.relatedName}>{p.name}</p>
+                <p style={styles.relatedPrice}>{Number(p.price).toFixed(2)} TND</p>
+              </Link>
+            ))}
           </div>
-        </div>
-      </section>
-
-      {/* Related Products */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-serif font-light mb-8 text-center">
-            Produits similaires
-          </h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {sampleProducts
-              .filter(p => p.category === product.category && p.id !== product.id)
-              .slice(0, 4)
-              .map((p) => (
-                <div key={p.id} className="group cursor-pointer">
-                  <Link href={`/products/${p.id}`}>
-                    <div className="aspect-square bg-gray-100 relative overflow-hidden">
-                      <Image
-                        src={p.image}
-                        alt={p.name}
-                        width={400}
-                        height={400}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  </Link>
-                  <div className="mt-4">
-                    <h3 className="font-serif text-lg hover:text-nude-500 transition-colors">
-                      {p.name}
-                    </h3>
-                    <p className="font-serif text-lg mt-2">
-                      {p.price.toFixed(2)} TND
-                    </p>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }
+
+// ── STYLES ───────────────────────────────────────────────────────────────
+const styles: Record<string, React.CSSProperties> = {
+  page:         { fontFamily: "'Cormorant Garamond', Georgia, serif", background: '#fff', minHeight: '100vh' },
+  center:       { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', fontFamily: "'Cormorant Garamond', Georgia, serif", textAlign: 'center', padding: '60px 6vw' },
+  spinner:      { width: 36, height: 36, border: '1px solid #ddd', borderTop: '1px solid #111', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: 20 },
+  btnSpinner:   { width: 14, height: 14, border: '1px solid rgba(255,255,255,0.4)', borderTop: '1px solid #fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block', marginRight: 8, verticalAlign: 'middle' },
+  loadingText:  { fontSize: 11, letterSpacing: '0.3em', color: '#aaa', textTransform: 'uppercase' },
+  ctaBtn:       { display: 'inline-block', padding: '12px 40px', background: '#111', color: '#fff', textDecoration: 'none', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: 'inherit' },
+  breadcrumb:   { padding: '16px 6vw', fontSize: 11, letterSpacing: '0.08em', color: '#999', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', borderBottom: '1px solid #f5f5f5' },
+  breadLink:    { color: '#999', textDecoration: 'none' },
+  breadSep:     { color: '#ddd' },
+  main:         { maxWidth: 1200, margin: '0 auto', padding: '48px 6vw', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'start' },
+  imagesCol:    { display: 'flex', flexDirection: 'column', gap: 12 },
+  mainImgBox:   { aspectRatio: '3/4', background: '#f8f8f8', overflow: 'hidden' },
+  mainImg:      { width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.3s' },
+  thumbRow:     { display: 'flex', gap: 8 },
+  thumb:        { width: 72, height: 88, cursor: 'pointer', overflow: 'hidden', flexShrink: 0 },
+  infoCol:      { position: 'sticky', top: 88 },
+  catLabel:     { fontSize: 10, letterSpacing: '0.35em', textTransform: 'uppercase', color: '#bbb', marginBottom: 12 },
+  productName:  { fontSize: 'clamp(1.6rem, 3vw, 2.4rem)' as any, fontWeight: 300, margin: '0 0 16px', lineHeight: 1.2 },
+  price:        { fontSize: 28, fontWeight: 300, margin: '0 0 20px', color: '#111' },
+  currency:     { fontSize: 14, color: '#aaa' },
+  description:  { fontSize: 14, color: '#555', lineHeight: 1.8, margin: '0 0 20px' },
+  divider:      { height: 1, background: '#f0f0f0', margin: '24px 0' },
+  qtyRow:       { display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 },
+  qtyLabel:     { fontSize: 12, letterSpacing: '0.1em', color: '#555' },
+  qtyControls:  { display: 'flex', alignItems: 'center', border: '1px solid #e8e8e8' },
+  qtyBtn:       { width: 36, height: 36, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  qtyNum:       { width: 44, textAlign: 'center', fontSize: 14, borderLeft: '1px solid #e8e8e8', borderRight: '1px solid #e8e8e8', lineHeight: '36px' },
+  addBtn:       { width: '100%', padding: '16px 0', color: '#fff', border: 'none', fontSize: 11, letterSpacing: '0.25em', textTransform: 'uppercase', fontFamily: 'inherit', transition: 'background 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12 },
+  viewCartLink: { display: 'block', textAlign: 'center', fontSize: 12, letterSpacing: '0.1em', color: '#1e8449', textDecoration: 'none', marginBottom: 12, padding: '8px 0', border: '1px solid #1e8449' },
+  details:      { display: 'flex', flexDirection: 'column', gap: 10 },
+  detailRow:    { display: 'flex', justifyContent: 'space-between', fontSize: 13, paddingBottom: 8, borderBottom: '1px solid #f8f8f8' },
+  detailKey:    { color: '#999', letterSpacing: '0.05em' },
+  detailVal:    { color: '#333', fontWeight: 400 },
+  related:      { background: '#fafafa', padding: '64px 6vw', borderTop: '1px solid #f0f0f0' },
+  relatedTitle: { textAlign: 'center', fontSize: 'clamp(1.4rem, 3vw, 2rem)' as any, fontWeight: 300, marginBottom: 40, letterSpacing: '0.05em' },
+  relatedGrid:  { maxWidth: 900, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 },
+  relatedCard:  { textDecoration: 'none', color: 'inherit', display: 'block' },
+  relatedImgBox:{ aspectRatio: '3/4', background: '#f0f0f0', overflow: 'hidden', marginBottom: 12 },
+  relatedImg:   { width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.6s', },
+  relatedName:  { fontSize: 14, fontWeight: 400, marginBottom: 4 },
+  relatedPrice: { fontSize: 13, color: '#666' },
+};
+
+const anim = `
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&display=swap');
+  @keyframes spin { to { transform: rotate(360deg); } }
+`;

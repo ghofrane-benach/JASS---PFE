@@ -1,230 +1,310 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-
+import { useCart } from '@/context/CartContext';
+// ✅ En local : localhost:3000 | En Docker : backend:3000
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 interface Product {
   id: string;
   name: string;
   price: number;
-  description?: string;
   images?: string[];
-  stock?: number;
+  status?: string;
   category?: { name: string; slug?: string };
 }
 
-export default function ProductDetailPage() {
-  const { id } = useParams() as { id: string };
+const CATEGORIES = [
+  { id: '',            label: 'JASS Collection' },
+  { id: 'clothing',    label: 'Clothing' },
+  { id: 'scarfs',      label: 'Scarfs' },
+  { id: 'accessories', label: 'Accessories' },
+];
 
-  const [product,  setProduct]  = useState<Product | null>(null);
-  const [loading,  setLoading]  = useState(true);
-  const [notFound, setNotFound] = useState(false);
-  const [mainImg,  setMainImg]  = useState(0);
-  const [added,    setAdded]    = useState(false);
-  const [wished,   setWished]   = useState(false);
-  const [qty,      setQty]      = useState(1);
+// ── Wrap in Suspense to allow useSearchParams ─────────────────────────────
+export default function ProductsPageWrapper() {
+  return (
+    <Suspense fallback={<LoadingView />}>
+      <ProductsPage />
+    </Suspense>
+  );
+}
+
+function ProductsPage() {
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams.get('category') ?? '';
+
+  const [products, setProducts]     = useState<Product[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState('');
+  const [activeFilter, setActive]   = useState(categoryParam);
+  const [sortBy, setSortBy]         = useState('newest');
+  const [hoveredId, setHoveredId]   = useState<string | null>(null);
+
+  // Sync URL param → local filter
+  useEffect(() => { setActive(categoryParam); }, [categoryParam]);
 
   useEffect(() => {
-    if (!id) return;
-    fetch(`${API_URL}/products/${id}`)
+    setLoading(true);
+    setError('');
+
+    const url = new URL(`${API_URL}/products`);
+    if (activeFilter) url.searchParams.set('category', activeFilter);
+    // Don't filter by status in case backend doesn't have published products yet
+    if (sortBy === 'newest')     url.searchParams.set('sortBy', 'createdAt');
+    if (sortBy === 'price-asc')  { url.searchParams.set('sortBy', 'price'); url.searchParams.set('order', 'ASC'); }
+    if (sortBy === 'price-desc') { url.searchParams.set('sortBy', 'price'); url.searchParams.set('order', 'DESC'); }
+    url.searchParams.set('limit', '50');
+
+    fetch(url.toString())
       .then(res => {
-        if (res.status === 404) { setNotFound(true); return null; }
-        if (!res.ok) throw new Error('Erreur serveur');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
-      .then(data => { if (data) setProduct(data); })
-      .catch(() => setNotFound(true))
+      .then(data => {
+        // Handle both { data: [] } and [] response shapes
+        const list = Array.isArray(data) ? data : (data.data ?? data.products ?? []);
+        setProducts(list);
+      })
+      .catch(err => {
+        console.error('Products fetch error:', err);
+        setError('Impossible de charger les produits. Vérifiez que le backend est démarré.');
+      })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [activeFilter, sortBy]);
 
-  function addToCart() {
-    if (!product) return;
-    const cart = JSON.parse(localStorage.getItem('cart') ?? '[]');
-    const existing = cart.find((item: any) => item.id === product.id);
-    if (existing) {
-      existing.qty += qty;
-    } else {
-      cart.push({
-        id:    product.id,
-        name:  product.name,
-        price: product.price,
-        image: product.images?.[0] ?? '',
-        qty,
-      });
-    }
-    localStorage.setItem('cart', JSON.stringify(cart));
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2500);
-  }
-
-  // ── Loading ────────────────────────────────────────────────────────────
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center font-serif">
-      <div className="text-center">
-        <div className="w-10 h-10 border border-[#111] border-t-transparent rounded-full mx-auto mb-5"
-          style={{ animation: 'spin 0.8s linear infinite' }} />
-        <p className="text-[#888] text-[13px] tracking-[0.2em] uppercase">Chargement</p>
-      </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-
-  // ── 404 ───────────────────────────────────────────────────────────────
-  if (notFound || !product) return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-5 font-serif">
-      <p className="text-lg text-[#333]">Produit introuvable</p>
-      <Link href="/products" className="text-[12px] tracking-[0.2em] uppercase text-[#111] no-underline border-b border-[#111] pb-0.5">
-        ← Voir tous les produits
-      </Link>
-    </div>
-  );
-
-  const images  = product.images?.length ? product.images : ['/images/placeholder.jpg'];
-  const price   = Number(product.price).toFixed(2);
-  const inStock = (product.stock ?? 0) > 0;
+  // ── Category name for heading ─────────────────────────────────────────
+  const catLabel = CATEGORIES.find(c => c.id === activeFilter)?.label ?? 'Tous les produits';
 
   return (
-    <div className="font-serif bg-white min-h-screen">
+    <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", background: '#fff', minHeight: '100vh' }}>
 
-      {/* ── BREADCRUMB ─────────────────────────────────────────────── */}
-      <div className="px-[6vw] py-4 border-b border-[#f0f0f0]">
-        <div className="max-w-[1300px] mx-auto flex gap-2 items-center text-[11px] text-[#aaa]">
-          <Link href="/"         className="no-underline text-[#aaa] hover:text-[#111] transition-colors">Accueil</Link>
-          <span className="text-[#ddd]">›</span>
-          <Link href="/products" className="no-underline text-[#aaa] hover:text-[#111] transition-colors">Produits</Link>
-          <span className="text-[#ddd]">›</span>
-          {product.category && (
-            <>
-              <Link href={`/products?category=${product.category.slug}`}
-                className="no-underline text-[#aaa] hover:text-[#111] transition-colors">
-                {product.category.name}
-              </Link>
-              <span className="text-[#ddd]">›</span>
-            </>
-          )}
-          <span className="text-[#333]">{product.name}</span>
+      {/* ── PAGE HEADER ──────────────────────────────────── */}
+      <section style={{ background: '#080808', color: '#fff', padding: '72px 6vw 60px', textAlign: 'center' }}>
+        <p style={{ fontSize: 10, letterSpacing: '0.5em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>
+          JASS — Collection
+        </p>
+        <h1 style={{ fontSize: 'clamp(2rem, 5vw, 4rem)', fontWeight: 300, margin: 0, letterSpacing: '-0.01em' }}>
+          {catLabel}
+        </h1>
+        {!loading && !error && (
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 14, letterSpacing: '0.1em' }}>
+            {products.length} produit{products.length !== 1 ? 's' : ''}
+          </p>
+        )}
+      </section>
+
+      {/* ── FILTERS BAR ──────────────────────────────────── */}
+      <div style={{
+        borderBottom: '1px solid #f0f0f0', background: '#fff',
+        padding: '0 6vw', position: 'sticky', top: 68, zIndex: 50,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: 16,
+      }}>
+        {/* Category pills */}
+        <div style={{ display: 'flex', gap: 0 }}>
+          {CATEGORIES.map(cat => (
+            <button key={cat.id}
+              onClick={() => {
+                setActive(cat.id);
+                // Update URL without navigation
+                const url = new URL(window.location.href);
+                if (cat.id) url.searchParams.set('category', cat.id);
+                else url.searchParams.delete('category');
+                window.history.pushState({}, '', url.toString());
+              }}
+              style={{
+                padding: '18px 24px', border: 'none', background: 'none',
+                cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 12, letterSpacing: '0.1em',
+                color: activeFilter === cat.id ? '#111' : '#aaa',
+                borderBottom: activeFilter === cat.id ? '2px solid #111' : '2px solid transparent',
+                transition: 'all 0.2s',
+              }}>
+              {cat.label}
+            </button>
+          ))}
         </div>
+
+        {/* Sort */}
+        <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{
+          padding: '8px 16px', border: '1px solid #e8e8e8',
+          background: '#fff', fontFamily: 'inherit',
+          fontSize: 11, letterSpacing: '0.1em', color: '#666',
+          cursor: 'pointer', outline: 'none',
+        }}>
+          <option value="newest">Plus récents</option>
+          <option value="price-asc">Prix croissant</option>
+          <option value="price-desc">Prix décroissant</option>
+        </select>
       </div>
 
-      {/* ── MAIN ───────────────────────────────────────────────────── */}
-      <div className="max-w-[1300px] mx-auto px-[6vw] py-16 grid grid-cols-1 md:grid-cols-2 gap-16 lg:gap-24">
+      {/* ── CONTENT ──────────────────────────────────────── */}
+      <div style={{ maxWidth: 1300, margin: '0 auto', padding: '60px 6vw' }}>
 
-        {/* ── IMAGES ─────────────────────────────────────────────── */}
-        <div>
-          <div className="bg-[#f8f8f8] overflow-hidden mb-3" style={{ aspectRatio: '3/4' }}>
-            <img src={images[mainImg]} alt={product.name}
-              className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+        {/* Loading */}
+        {loading && <LoadingView />}
+
+        {/* Error */}
+        {!loading && error && (
+          <div style={{ textAlign: 'center', padding: '80px 0' }}>
+            <p style={{ fontSize: 40, marginBottom: 16 }}>⚠️</p>
+            <p style={{ fontSize: 15, color: '#c0392b', marginBottom: 12 }}>{error}</p>
+            <p style={{ fontSize: 12, color: '#aaa', marginBottom: 32, letterSpacing: '0.05em' }}>
+              Vérifiez que le backend NestJS tourne sur le port 3000
+            </p>
+            <button onClick={() => setLoading(true)} style={{
+              padding: '12px 32px', background: '#111', color: '#fff',
+              border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase',
+            }}>
+              Réessayer
+            </button>
           </div>
-          {images.length > 1 && (
-            <div className="flex gap-2 flex-wrap">
-              {images.map((img, i) => (
-                <button key={i} onClick={() => setMainImg(i)}
-                  className="w-[70px] h-[70px] p-0 bg-[#f8f8f8] cursor-pointer overflow-hidden transition-all"
-                  style={{ border: i === mainImg ? '1px solid #111' : '1px solid transparent' }}>
-                  <img src={img} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
+        )}
+
+        {/* Empty state */}
+        {!loading && !error && products.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '80px 0' }}>
+            <p style={{ fontSize: 48, marginBottom: 20 }}>🧣</p>
+            <h2 style={{ fontSize: 22, fontWeight: 300, margin: '0 0 12px' }}>
+              Aucun produit trouvé
+            </h2>
+            <p style={{ fontSize: 13, color: '#aaa', marginBottom: 32 }}>
+              {activeFilter ? `Aucun produit dans la catégorie "${catLabel}"` : 'Aucun produit disponible pour le moment'}
+            </p>
+            <button onClick={() => setActive('')} style={{
+              padding: '12px 32px', background: 'transparent', color: '#111',
+              border: '1px solid #111', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase',
+            }}>
+              Voir tous les produits
+            </button>
+          </div>
+        )}
+
+        {/* Grid */}
+        {!loading && !error && products.length > 0 && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gap: 4,
+          }}>
+            {products.map(product => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                hovered={hoveredId === product.id}
+                onHover={setHoveredId}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
+    </div>
+  );
+}
+
+// ─── PRODUCT CARD ─────────────────────────────────────────────────────────
+function ProductCard({ product, hovered, onHover }: {
+  product: Product;
+  hovered: boolean;
+  onHover: (id: string | null) => void;
+}) {
+  const img   = product.images?.[0] ?? '/images/placeholder.jpg';
+  const price = Number(product.price).toFixed(2);
+  const [added, setAdded] = useState(false);
+  const { addItem } = useCart();
+
+  function addToCart(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    addItem({ id: product.id, name: product.name, price: product.price, image: img });
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1800);
+  }
+
+  return (
+    <div style={{ position: 'relative' }}
+      onMouseOver={() => onHover(product.id)}
+      onMouseOut={() => onHover(null)}>
+
+      <Link href={`/products/${product.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+
+        {/* Image */}
+        <div style={{ aspectRatio: '3/4', background: '#f8f8f8', overflow: 'hidden', position: 'relative' }}>
+          <img src={img} alt={product.name} style={{
+            width: '100%', height: '100%', objectFit: 'cover',
+            transform: hovered ? 'scale(1.05)' : 'scale(1)',
+            transition: 'transform 0.7s cubic-bezier(0.16,1,0.3,1)',
+          }} />
+
+          {/* Overlay hover */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(0,0,0,0.18)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
+            padding: '0 16px 16px', gap: 8,
+            opacity: hovered ? 1 : 0,
+            transition: 'opacity 0.3s',
+          }}>
+            {/* Bouton Voir produit */}
+            <span style={{
+              background: '#fff', color: '#111', padding: '10px 0',
+              fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase',
+              fontFamily: "'Cormorant Garamond', serif",
+              width: '100%', textAlign: 'center', display: 'block',
+            }}>
+              Voir le produit
+            </span>
+          </div>
         </div>
 
-        {/* ── DETAILS ────────────────────────────────────────────── */}
-        <div className="pt-2">
-
+        {/* Info */}
+        <div style={{ padding: '14px 4px 8px' }}>
           {product.category && (
-            <p className="text-[10px] tracking-[0.35em] uppercase text-[#aaa] mb-4">
+            <p style={{ fontSize: 9, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#bbb', marginBottom: 6 }}>
               {product.category.name}
             </p>
           )}
-
-          <h1 className="font-light leading-[1.1] mb-5 tracking-[-0.01em]"
-            style={{ fontSize: 'clamp(1.8rem,3vw,2.8rem)' }}>
+          <h3 style={{ fontSize: 15, fontWeight: 400, margin: '0 0 6px', lineHeight: 1.3 }}>
             {product.name}
-          </h1>
-
-          <p className="font-light mb-8" style={{ fontSize: '2rem' }}>
-            {price} <span className="text-base text-[#888]">TND</span>
+          </h3>
+          <p style={{ fontSize: 14, fontWeight: 300, margin: 0, color: '#333' }}>
+            {price} <span style={{ fontSize: 11, color: '#aaa' }}>TND</span>
           </p>
-
-          {product.description && (
-            <p className="text-[14px] leading-[1.8] text-[#555] mb-10 max-w-[420px]">
-              {product.description}
-            </p>
-          )}
-
-          {/* Stock */}
-          <p className="text-[11px] tracking-[0.2em] uppercase mb-8"
-            style={{ color: inStock ? '#4a9e6f' : '#e55' }}>
-            {inStock ? `✓ En stock (${product.stock} disponibles)` : '✗ Rupture de stock'}
-          </p>
-
-          {/* Quantité */}
-          {inStock && (
-            <div className="flex items-center gap-4 mb-6">
-              <span className="text-[11px] tracking-[0.2em] uppercase text-[#888]">Quantité</span>
-              <div className="flex items-center border border-[#e8e8e8]">
-                <button onClick={() => setQty(q => Math.max(1, q - 1))}
-                  className="w-10 h-10 flex items-center justify-center text-[#111] bg-transparent border-none cursor-pointer text-lg hover:bg-[#f5f5f5] transition-colors">
-                  −
-                </button>
-                <span className="w-10 text-center text-[14px]">{qty}</span>
-                <button onClick={() => setQty(q => Math.min(product.stock ?? 99, q + 1))}
-                  className="w-10 h-10 flex items-center justify-center text-[#111] bg-transparent border-none cursor-pointer text-lg hover:bg-[#f5f5f5] transition-colors">
-                  +
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* CTA */}
-          <div className="flex flex-col gap-3 max-w-[400px]">
-            <button onClick={addToCart} disabled={!inStock}
-              className="py-4 px-8 text-white text-[11px] tracking-[0.25em] uppercase font-serif border-none cursor-pointer transition-all duration-300"
-              style={{ background: added ? '#4a9e6f' : inStock ? '#111' : '#ccc' }}>
-              {added ? '✓ Ajouté au panier' : inStock ? 'Ajouter au panier' : 'Indisponible'}
-            </button>
-
-            <button onClick={() => setWished(w => !w)}
-              className="py-4 px-8 bg-transparent text-[11px] tracking-[0.25em] uppercase font-serif cursor-pointer transition-all duration-300"
-              style={{ color: wished ? '#c0392b' : '#111', border: `1px solid ${wished ? '#c0392b' : '#111'}` }}>
-              {wished ? '♥ Dans vos favoris' : '♡ Ajouter aux favoris'}
-            </button>
-          </div>
-
-          {/* Toast */}
-          {added && (
-            <div className="mt-4 flex items-center gap-3 p-3 bg-[#f0faf5] border border-[#4a9e6f]/30">
-              <span className="text-[#4a9e6f]">✓</span>
-              <span className="text-[13px] text-[#4a9e6f]">Produit ajouté au panier</span>
-              <Link href="/cart"
-                className="ml-auto text-[11px] tracking-[0.15em] uppercase text-[#111] no-underline border-b border-[#111] pb-0.5">
-                Voir le panier →
-              </Link>
-            </div>
-          )}
-
-          {/* Détails */}
-          <div className="mt-12 pt-8 border-t border-[#f0f0f0]">
-            <h3 className="text-[12px] tracking-[0.25em] uppercase mb-4 text-[#333]">Détails du produit</h3>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-              {[
-                ['Composition', '100% cachemire'],
-                ['Entretien',   'Lavage à 30°C' ],
-                ['Origine',     'Tunisie'        ],
-                ['Livraison',   'Toute la Tunisie'],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <p className="text-[10px] tracking-[0.2em] uppercase text-[#aaa] mb-1">{label}</p>
-                  <p className="text-[13px] text-[#333]">{value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
-      </div>
+      </Link>
+
+      {/* Bouton Add to Cart — en dehors du Link */}
+      <button onClick={addToCart} style={{
+        width: '100%', padding: '10px 0',
+        background: added ? '#4a9e6f' : '#111',
+        color: '#fff', border: 'none', cursor: 'pointer',
+        fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase',
+        fontFamily: "'Cormorant Garamond', serif",
+        transition: 'background 0.3s',
+        marginBottom: 16,
+      }}>
+        {added ? '✓ Ajouté' : '+ Panier'}
+      </button>
+    </div>
+  );
+}
+
+// ─── LOADING ──────────────────────────────────────────────────────────────
+function LoadingView() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 0' }}>
+      <div style={{ width: 36, height: 36, border: '1px solid #ddd', borderTop: '1px solid #111', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: 20 }} />
+      <p style={{ fontSize: 10, letterSpacing: '0.4em', textTransform: 'uppercase', color: '#aaa' }}>Chargement</p>
     </div>
   );
 }

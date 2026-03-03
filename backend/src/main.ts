@@ -15,7 +15,7 @@ async function bootstrap() {
   const port = process.env.PORT ?? 3000;
 
   // ✅ app.listen() D'ABORD — TypeORM est prêt seulement après
-  await app.listen(port);
+  await app.listen(port); 
   console.log(`🚀 Backend JASS démarré sur http://localhost:${port}`);
 
   // ✅ Seed APRÈS que l'app soit complètement démarrée
