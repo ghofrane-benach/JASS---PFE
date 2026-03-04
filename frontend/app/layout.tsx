@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import AuthProvider from '@/component/AuthProvider';
+import { AuthProvider } from '@/component/AuthProvider';
 import Header from '@/component/Header';
 import Footer from '@/component/Footer';
 import { CartProvider } from '@/context/CartContext';

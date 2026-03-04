@@ -223,10 +223,10 @@ function ProductCard({ product, hovered, onHover }: {
   const [added, setAdded] = useState(false);
   const { addItem } = useCart();
 
-  function addToCart(e: React.MouseEvent) {
+  async function addToCart(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    addItem({ id: product.id, name: product.name, price: product.price, image: img });
+     await addItem(product.id, 1); 
     setAdded(true);
     setTimeout(() => setAdded(false), 1800);
   }

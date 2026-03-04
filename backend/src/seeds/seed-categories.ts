@@ -60,8 +60,8 @@ export const seedCategories = async (dataSource: DataSource) => {
       description: 'Écharpe en cachemire rose.',
       images: [
         '/images/scarfs/pink.jpeg',        
-        '/images/scarfs/pink.jpeg',         
-        '/images/scarfs/pink.jpeg',        
+        '/images/scarfs/pink1.jpeg',         
+        '/images/scarfs/pink2.jpeg',        
       ],
       category: S,
     },
@@ -71,8 +71,9 @@ export const seedCategories = async (dataSource: DataSource) => {
       description: 'Écharpe en cachemire bleu ciel.',
       images: [
         '/images/scarfs/bleu ciel.jpeg',    
-        '/images/scarfs/bleu ciel.jpeg',    
-        '/images/scarfs/bleu ciel.jpeg',    
+        '/images/scarfs/bleuciel1.jpeg',    
+        '/images/scarfs/bleuciel2.jpeg', 
+        '/images/scarfs/bleuciel3.jpeg',   
       ],
       category: S,
     },
@@ -94,7 +95,8 @@ export const seedCategories = async (dataSource: DataSource) => {
       images: [
         '/images/scarfs/green.jpeg',    
         '/images/scarfs/green1.jpeg',        
-        '/images/scarfs/green2.jpeg',        
+        '/images/scarfs/green2.jpeg',  
+        '/images/scarfs/green3.jpeg',      
       ],
       category: S,
     },
@@ -127,7 +129,7 @@ export const seedCategories = async (dataSource: DataSource) => {
       images: [
         '/images/scarfs/zebra.jpeg',    
         '/images/scarfs/zebra1.jpeg',      
-        '/images/scarfs/zebra1.jpeg',       
+        '/images/scarfs/zebra2.jpeg',       
       ],
       category: S,
     },
@@ -149,7 +151,8 @@ export const seedCategories = async (dataSource: DataSource) => {
       images: [
         '/images/scarfs/red.jpeg',       
         '/images/scarfs/rouge1.jpeg',        
-        '/images/scarfs/red2.jpeg',         
+        '/images/scarfs/red2.jpeg', 
+        '/images/scarfs/red3.jpeg',         
       ],
       category: S,
     },
@@ -171,7 +174,7 @@ export const seedCategories = async (dataSource: DataSource) => {
       images: [
         '/images/scarfs/white.jpeg',      
         '/images/scarfs/white1.jpeg',       
-        '/images/scarfs/white.jpeg',        
+        '/images/scarfs/white2.jpeg',        
       ],
       category: S,
     },
@@ -182,7 +185,7 @@ export const seedCategories = async (dataSource: DataSource) => {
       images: [
         '/images/scarfs/brown.jpeg',       
         '/images/scarfs/marrose.jpeg',        
-        '/images/scarfs/brown.jpeg',        
+        '/images/scarfs/brown1.jpeg',        
       ],
       category: S,
     },
@@ -192,8 +195,8 @@ export const seedCategories = async (dataSource: DataSource) => {
       description: 'Écharpe Gris & Blanc en Bouclette.',
       images: [
         '/images/scarfs/grey.jpeg',        
-        '/images/scarfs/grey.jpeg',         
-        '/images/scarfs/grey.jpeg',         
+        '/images/scarfs/grey1.jpeg',         
+        '/images/scarfs/grey2.jpeg',         
       ],
       category: S,
     },
@@ -203,8 +206,9 @@ export const seedCategories = async (dataSource: DataSource) => {
       description: 'Écharpe Marron en Cachemire.',
       images: [
         '/images/scarfs/marron.jpeg',      
-        '/images/scarfs/marron.jpeg',       
-        '/images/scarfs/marron.jpeg',       
+        '/images/scarfs/marron1.jpeg',       
+        '/images/scarfs/marron2.jpeg', 
+        '/images/scarfs/marron3.jpeg',       
       ],
       category: S,
     },
@@ -236,7 +240,8 @@ export const seedCategories = async (dataSource: DataSource) => {
       description: 'Écharpe jaune ensoleillée.',
       images: [
         '/images/scarfs/jaune2.jpeg',       
-        '/images/scarfs/jaune1.jpeg',       
+        '/images/scarfs/jaune1.jpeg',  
+        '/images/scarfs/jaune.jpeg',     
       ],
       category: S,
     },
@@ -328,25 +333,15 @@ export const seedCategories = async (dataSource: DataSource) => {
     {
       name: 'Trench Coat Blanc I',
       price: 120, stock: 22,
-      description: 'Trench coat blanche élégante.',
+      description: 'Trench coat Noir.',
       images: [
         '/images/scarfs/blanc1.jpeg',      
-        '/images/scarfs/blanc1.jpeg',       
+        '/images/scarfs/blanc.jpeg',       
         '/images/scarfs/blanc1.jpeg',     
       ],
       category: C,
     },
-    {
-      name: 'Trench Coat Blanc II',
-      price: 120, stock: 22,
-      description: 'Trench coat blanche élégante.',
-      images: [
-        '/images/scarfs/blanc.jpeg',        
-        '/images/scarfs/blanc1.jpeg',        
-        '/images/scarfs/blanc.jpeg',        
-      ],
-      category: C,
-    },
+    
   ];
 
   const seedNames = products.map(p => p.name);

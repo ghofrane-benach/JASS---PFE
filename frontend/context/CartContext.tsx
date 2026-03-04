@@ -1,9 +1,12 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export interface CartItem {
-  id: string;
+  id: string;         // CartItem UUID (pas le product id)
+  productId: string;
   name: string;
   price: number;
   image: string;
@@ -13,58 +16,109 @@ export interface CartItem {
 interface CartContextType {
   items: CartItem[];
   totalQty: number;
-  addItem: (item: Omit<CartItem, 'qty'>) => void;
-  removeItem: (id: string) => void;
-  updateQty: (id: string, delta: number) => void;
-  clearCart: () => void;
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
+  addItem: (productId: string, quantity?: number) => Promise<void>;
+  removeItem: (itemId: string) => Promise<void>;
+  updateQty: (itemId: string, delta: number) => Promise<void>;
+  clearCart: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
 
-export function CartProvider({ children }: { children: ReactNode }) {
-  const [items,   setItems]   = useState<CartItem[]>([]);
-  const [isOpen,  setIsOpen]  = useState(false);
-  const [mounted, setMounted] = useState(false);
+// ── Transformer la réponse API → format interne ──────────────────────────
+function toItems(cart: any): CartItem[] {
+  if (!cart?.items) return [];
+  return cart.items.map((i: any) => ({
+    id:        i.id,
+    productId: i.productId,
+    name:      i.product?.name  ?? '',
+    price:     Number(i.unitPrice),
+    image:     i.product?.images?.[0] ?? '/images/placeholder.jpg',
+    qty:       i.quantity,
+  }));
+}
 
-  useEffect(() => {
-    const stored = localStorage.getItem('cart');
-    if (stored) setItems(JSON.parse(stored));
-    setMounted(true);
+function getToken() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token');
+}
+
+function authHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${getToken()}`,
+  };
+}
+
+export function CartProvider({ children }: { children: ReactNode }) {
+  const [items,  setItems]  = useState<CartItem[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+
+  // ── Charger le panier depuis l'API ──────────────────────────────────
+  const refresh = useCallback(async () => {
+    if (!getToken()) { setItems([]); return; }
+    try {
+      const res = await fetch(`${API_URL}/cart`, { headers: authHeaders() });
+      if (res.ok) setItems(toItems(await res.json()));
+      else        setItems([]);
+    } catch { setItems([]); }
   }, []);
 
-  function save(next: CartItem[]) {
-    setItems(next);
-    localStorage.setItem('cart', JSON.stringify(next));
+  useEffect(() => { refresh(); }, [refresh]);
+
+  // ── Ajouter un produit ──────────────────────────────────────────────
+  async function addItem(productId: string, quantity = 1) {
+    if (!getToken()) { window.location.href = '/login'; return; }
+    try {
+      const res = await fetch(`${API_URL}/cart/items`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ productId, quantity }),
+      });
+      if (res.ok) { setItems(toItems(await res.json())); setIsOpen(true); }
+    } catch {}
   }
 
-  function addItem(item: Omit<CartItem, 'qty'>) {
-    setItems(prev => {
-      const next = [...prev];
-      const existing = next.find(i => i.id === item.id);
-      if (existing) existing.qty += 1;
-      else next.push({ ...item, qty: 1 });
-      localStorage.setItem('cart', JSON.stringify(next));
-      return next;
-    });
-    setIsOpen(true);
+  // ── Supprimer un item ───────────────────────────────────────────────
+  async function removeItem(itemId: string) {
+    try {
+      const res = await fetch(`${API_URL}/cart/items/${itemId}`, {
+        method: 'DELETE', headers: authHeaders(),
+      });
+      if (res.ok) setItems(toItems(await res.json()));
+    } catch {}
   }
 
-  function removeItem(id: string) { save(items.filter(i => i.id !== id)); }
-
-  function updateQty(id: string, delta: number) {
-    save(items.map(i => i.id === id ? { ...i, qty: Math.max(1, i.qty + delta) } : i));
+  // ── Modifier la quantité (delta = +1 ou -1) ─────────────────────────
+  async function updateQty(itemId: string, delta: number) {
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+    const newQty = item.qty + delta;
+    if (newQty < 1) { await removeItem(itemId); return; }
+    try {
+      const res = await fetch(`${API_URL}/cart/items/${itemId}`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify({ quantity: newQty }),
+      });
+      if (res.ok) setItems(toItems(await res.json()));
+    } catch {}
   }
 
-  function clearCart() { save([]); }
+  // ── Vider le panier ─────────────────────────────────────────────────
+  async function clearCart() {
+    try {
+      await fetch(`${API_URL}/cart`, { method: 'DELETE', headers: authHeaders() });
+      setItems([]);
+    } catch {}
+  }
 
   const totalQty = items.reduce((s, i) => s + i.qty, 0);
 
-  if (!mounted) return <>{children}</>;
-
   return (
-    <CartContext.Provider value={{ items, totalQty, addItem, removeItem, updateQty, clearCart, isOpen, setIsOpen }}>
+    <CartContext.Provider value={{ items, totalQty, isOpen, setIsOpen, addItem, removeItem, updateQty, clearCart, refresh }}>
       {children}
     </CartContext.Provider>
   );
@@ -72,6 +126,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 export function useCart() {
   const ctx = useContext(CartContext);
-  if (!ctx) return { items: [], totalQty: 0, addItem: () => {}, removeItem: () => {}, updateQty: () => {}, clearCart: () => {}, isOpen: false, setIsOpen: () => {} } as any;
+  if (!ctx) return {
+    items: [], totalQty: 0, isOpen: false,
+    setIsOpen: () => {}, addItem: async () => {}, removeItem: async () => {},
+    updateQty: async () => {}, clearCart: async () => {}, refresh: async () => {},
+  } as any;
   return ctx;
 }
