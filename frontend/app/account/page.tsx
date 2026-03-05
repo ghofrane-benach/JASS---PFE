@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/component/AuthProvider';
 import { useCart } from '@/context/CartContext';
+import { link } from 'fs';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -79,7 +80,7 @@ export default function AccountPage() {
 
   const TABS = [
     { key: 'profile',  label: 'Mon profil',    icon: '👤' },
-    { key: 'orders',   label: 'Mes commandes',  icon: '📦' },
+    { key: 'orders',   label: 'Mes commandes',link : '/account/orders', icon: '📦' },
     { key: 'settings', label: 'Paramètres',     icon: '⚙️' },
   ] as const;
 
@@ -132,12 +133,16 @@ export default function AccountPage() {
               <h2 style={{ fontSize: 20, fontWeight: 300, marginBottom: 32, paddingBottom: 16, borderBottom: '1px solid #f0f0f0' }}>
                 Informations personnelles
               </h2>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 40 }}>
                 {/* ✅ Compteur commandes réel */}
-                <div style={{ background: '#f9f9f9', padding: '24px 20px', textAlign: 'center' }}>
-                  <p style={{ fontSize: 26, fontWeight: 300, margin: '0 0 6px' }}>{orders.length}</p>
-                  <p style={{ fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase', color: '#aaa', margin: 0 }}>Commandes</p>
-                </div>
+                <Link href="/orders" style={{ textDecoration: 'none' }}>
+                  <div style={{ background: '#f9f9f9', padding: '24px 20px', textAlign: 'center' }}>
+                    <p style={{ fontSize: 26, fontWeight: 300, margin: '0 0 6px' }}>{orders.length}</p>
+                    <p style={{ fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase', color: '#aaa', margin: 0 }}>Commandes</p>
+                  </div>
+                </Link>
+               
                 <Link href="/cart" style={{ textDecoration: 'none' }}>
                   <div style={{ background: '#f9f9f9', padding: '24px 20px', textAlign: 'center', cursor: 'pointer' }}>
                     <p style={{ fontSize: 26, fontWeight: 300, margin: '0 0 6px' }}>{totalQty}</p>

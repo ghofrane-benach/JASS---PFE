@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 // ─── HERO SLIDES ──────────────────────────────────────────────────────────
 const SLIDES = [
   {
@@ -279,22 +279,14 @@ function CatCard({ name, slug, img, ratio }: { name: string; slug: string; img: 
 // VIDEO SECTION — editorial style
 // ══════════════════════════════════════════════════════════════════════════
 function VideoSection() {
-  const [play, setPlay]   = useState(false);
-  const [muted, setMuted] = useState(true);
-  const vRef = useRef<HTMLVideoElement>(null);
 
   // ✅ Chemin statique — vidéo dans frontend/public/videos/jass-video.mp4
   const VIDEO_SRC = "/videos/scarvs.mp4";
-  
 
-  function toggle() {
-    const v = vRef.current; if (!v) return;
-    if (play) { v.pause(); setPlay(false); } else { v.play(); setPlay(true); }
-  }
 
   return (
     <section style={{ background: "#111", padding: "80px 0" }}>
-      <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 6vw" }}>
+      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "0 6vw" }}>
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 44 }}>
@@ -312,32 +304,17 @@ function VideoSection() {
         </div>
 
         {/* Video player */}
-        <div style={{ position: "relative", width: "100%", aspectRatio: "3/4", background: "#1c1c1c", overflow: "hidden" }}>
+        <div style={{ position: "relative", width: "100%", aspectRatio: "9/16",maxHeight: "80vh", background: "#1c1c1c", overflow: "hidden" }}>
           <video
-            ref={vRef}
             src={VIDEO_SRC}
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            muted={muted}
+            muted
             loop
             autoPlay
             playsInline
-            onPlay={() => setPlay(true)}
-            onEnded={() => setPlay(false)}
+        
           />
 
-          {/* Click to play/pause */}
-          <div style={{ position: "absolute", inset: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-            onClick={toggle}>
-            {!play && (
-              <div style={{
-                width: 80, height: 80, borderRadius: "50%",
-                background: "rgba(255,255,255,0.12)", backdropFilter: "blur(10px)",
-                border: "1px solid rgba(255,255,255,0.3)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "#fff", fontSize: 24, paddingLeft: 5,
-              }}>▶</div>
-            )}
-          </div>
 
           {/* Controls bar */}
           <div style={{
@@ -345,20 +322,7 @@ function VideoSection() {
             background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)",
             display: "flex", alignItems: "center", gap: 12,
           }}>
-            <button onClick={toggle} style={{
-              background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)",
-              color: "#fff", width: 38, height: 38, borderRadius: "50%",
-              cursor: "pointer", fontSize: 14,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              {play ? "⏸" : "▶"}
-            </button>
-            <button onClick={() => setMuted(m => { if (vRef.current) vRef.current.muted = !m; return !m; })} style={{
-              background: "transparent", border: "none",
-              color: "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: 16,
-            }}>
-              {muted ? "🔇" : "🔊"}
-            </button>
+            
           </div>
         </div>
 
@@ -371,27 +335,55 @@ function VideoSection() {
 // LOOKBOOK GRID — #INJASS
 // ══════════════════════════════════════════════════════════════════════════
 function LookbookGrid() {
+  // ← AJOUTE : fetch les produits pour mapper image → id
+  const [productMap, setProductMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch(`${API_URL}/products?limit=100`)
+      .then(r => r.json())
+      .then(data => {
+        const list = Array.isArray(data) ? data : (data.data ?? data.products ?? []);
+        // Construire un Map : image → productId
+        const map: Record<string, string> = {};
+        list.forEach((p: { id: string; images?: string[] }) => {
+          p.images?.forEach(img => {
+            // Normalise le chemin pour matcher (ex: "/images/scarfs/cow.jpeg")
+            const key = img.startsWith('/') ? img : `/${img}`;
+            map[key] = p.id;
+          });
+        });
+        setProductMap(map);
+      })
+      .catch(() => {});
+  }, []);
+
   return (
-    <section style={{ background: "#fff", padding: "80px 0" }}>
-      <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 6vw" }}>
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <h2 style={{ fontSize: "clamp(2rem,5vw,3.5rem)", fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 12 }}>
+    <section style={{ background: '#fff', padding: '80px 0' }}>
+      <div style={{ maxWidth: 1300, margin: '0 auto', padding: '0 6vw' }}>
+        <div style={{ textAlign: 'center', marginBottom: 48 }}>
+          <h2 style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 12 }}>
             #INJASS
           </h2>
-          <p style={{ color: "#666", fontSize: 13, letterSpacing: "0.04em", maxWidth: 480, margin: "0 auto" }}>
+          <p style={{ color: '#666', fontSize: 13, letterSpacing: '0.04em', maxWidth: 480, margin: '0 auto' }}>
             Inspirez-vous de notre communauté et partagez vos looks avec <strong>#INJASS</strong>
           </p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gridTemplateRows: "repeat(2, 220px)", gap: 3 }}>
-          {LOOKBOOK.map((img, i) => <LookCell key={i} img={img} />)}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(2, 18vw)', gap: 3 }}>
+          {LOOKBOOK.map((img, i) => (
+            <LookCell
+              key={i}
+              img={img}
+              productId={productMap[img] ?? null}  // ← lien vers le produit si trouvé
+            />
+          ))}
         </div>
-        <div style={{ textAlign: "center", marginTop: 44 }}>
+        <div style={{ textAlign: 'center', marginTop: 44 }}>
           <Link href="/products" style={{
-            display: "inline-block", padding: "14px 52px",
-            background: "#fff", color: "#111",
-            border: "1px solid #111", fontSize: 11,
-            letterSpacing: "0.22em", textTransform: "uppercase",
-            textDecoration: "none", fontFamily: "inherit",
+            display: 'inline-block', padding: '14px 52px',
+            background: '#fff', color: '#111',
+            border: '1px solid #111', fontSize: 11,
+            letterSpacing: '0.22em', textTransform: 'uppercase',
+            textDecoration: 'none', fontFamily: 'inherit',
           }}>Voir plus de looks</Link>
         </div>
       </div>
@@ -399,25 +391,46 @@ function LookbookGrid() {
   );
 }
 
-function LookCell({ img }: { img: string }) {
+// ── LookCell avec lien conditionnel ────────────────────────────────────────
+function LookCell({ img, productId }: { img: string; productId: string | null }) {
   const [hov, setHov] = useState(false);
-  return (
-    <div style={{ position: "relative", overflow: "hidden", cursor: "pointer" }}
-      onMouseOver={() => setHov(true)} onMouseOut={() => setHov(false)}>
+
+  const content = (
+    <div
+      style={{ position: 'relative', overflow: 'hidden', cursor: productId ? 'pointer' : 'default', height: '100%' }}
+      onMouseOver={() => setHov(true)}
+      onMouseOut={() => setHov(false)}
+    >
       <div style={{
-        position: "absolute", inset: 0,
+        position: 'absolute', inset: 0,
         backgroundImage: `url(${img})`,
-        backgroundSize: "cover", backgroundPosition: "center",
-        transform: hov ? "scale(1.06)" : "scale(1)",
-        transition: "transform 0.6s cubic-bezier(0.16,1,0.3,1)",
-        filter: hov ? "brightness(0.85)" : "brightness(1)",
+        backgroundSize: 'cover', backgroundPosition: 'center',
+        transform: hov ? 'scale(1.06)' : 'scale(1)',
+        transition: 'transform 0.6s cubic-bezier(0.16,1,0.3,1)',
+        filter: hov ? 'brightness(0.82)' : 'brightness(1)',
       }} />
       {hov && (
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.9)", display: "flex", alignItems: "center", justifyContent: "center", color: "#111", fontSize: 16 }}>+</div>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#111', fontSize: 16 }}>
+            {productId ? '→' : '+'}
+          </div>
+          {productId && (
+            <span style={{ color: '#fff', fontSize: 9, letterSpacing: '0.25em', textTransform: 'uppercase' }}>
+              Voir produit
+            </span>
+          )}
         </div>
       )}
     </div>
+  );
+
+  // Si le produit est trouvé → Link cliquable, sinon → div simple
+  return productId ? (
+    <Link href={`/products/${productId}`} style={{ display: 'block', textDecoration: 'none' }}>
+      {content}
+    </Link>
+  ) : (
+    <div>{content}</div>
   );
 }
 
