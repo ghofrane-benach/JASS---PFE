@@ -69,4 +69,11 @@ export class Product {
 
   @UpdateDateColumn({ type: 'timestamp' })
   updatedAt: Date;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+subcategory: string | null; 
+  
+  @Column({ type: 'simple-array', nullable: true, default: '' })
+sizes: string[];   
+
 }

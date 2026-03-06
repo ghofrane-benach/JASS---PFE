@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DataSource } from 'typeorm';
 import { seedCategories } from './seeds/seed-categories';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -25,6 +26,11 @@ async function bootstrap() {
   } catch (err) {
     console.error('❌ Seed error:', err.message);
   }
+  app.useGlobalPipes(new ValidationPipe({
+  whitelist: true,      // supprime les champs non déclarés dans le DTO
+  forbidNonWhitelisted: true,  // retourne 400 si champ inconnu reçu
+  transform: true,      // convertit les types automatiquement
+}));
 }
 
 bootstrap();

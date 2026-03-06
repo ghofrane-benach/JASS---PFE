@@ -1,3 +1,4 @@
+// backend/src/categories/categories.service.ts
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -49,21 +50,59 @@ export class CategoriesService {
     return { message: `Catégorie #${id} supprimée avec succès` };
   }
 
-  // ✅ SEED — créer les 3 catégories JASS si elles n'existent pas
+  // ✅ SEED — 3 catégories JASS avec leurs sous-catégories
   async seed(): Promise<{ message: string; categories: Category[] }> {
-    const existing = await this.categoryRepository.count();
-    if (existing > 0) {
-      const cats = await this.findAll();
-      return { message: `Déjà ${existing} catégories en base`, categories: cats };
+    const CATEGORIES_DATA = [
+      {
+        name: 'Scarfs',
+        slug: 'scarfs',
+        subcategories: [],  // pas de sous-catégories pour les écharpes
+      },
+      {
+        name: 'Accessories',
+        slug: 'accessories',
+        subcategories: [
+          { label: 'Colliers',           slug: 'colliers'          },
+          { label: 'Bracelets',          slug: 'bracelets'         },
+          { label: "Boucles d'oreilles", slug: 'boucles-doreilles' },
+          { label: "Bagues",             slug: 'bagues'            },
+        ],
+      },
+      {
+        name: 'Clothing',
+        slug: 'clothing',
+        subcategories: [
+          { label: 'Coats',     slug: 'coats'     },
+          { label: 'Vestes',    slug: 'vestes'    },
+          { label: 'Sets',      slug: 'sets'      },
+          { label: 'Pantalons', slug: 'pantalons' },
+          { label: 'Chemises', slug: 'chemises' },
+        ],
+      },
+    ];
+
+    const result: Category[] = [];
+
+    for (const data of CATEGORIES_DATA) {
+      let cat = await this.categoryRepository.findOne({ where: { slug: data.slug } });
+
+      if (!cat) {
+        // Crée la catégorie si elle n'existe pas
+        cat = await this.categoryRepository.save(
+          this.categoryRepository.create(data)
+        );
+        console.log(`✅ Catégorie créée : ${data.name}`);
+      } else {
+        // Met à jour les sous-catégories si la catégorie existe déjà
+        cat.subcategories = data.subcategories;
+        cat = await this.categoryRepository.save(cat);
+        console.log(`🔄 Catégorie mise à jour : ${data.name}`);
+      }
+
+      result.push(cat);
     }
 
-    const categories = await this.categoryRepository.save([
-      this.categoryRepository.create({ name: 'Scarfs',      slug: 'scarfs'      }),
-      this.categoryRepository.create({ name: 'Accessories', slug: 'accessories' }),
-      this.categoryRepository.create({ name: 'Clothing',    slug: 'clothing'    }),
-    ]);
-
-    return { message: '3 catégories créées ✅', categories };
+    return { message: `${result.length} catégories seedées ✅`, categories: result };
   }
 
   private generateSlug(name: string): string {

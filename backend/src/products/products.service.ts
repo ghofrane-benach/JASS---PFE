@@ -1,3 +1,4 @@
+// backend/src/products/products.service.ts
 import {
   Injectable, NotFoundException, BadRequestException,
 } from '@nestjs/common';
@@ -19,7 +20,7 @@ export class ProductsService {
 
   async findAll(query: ProductQueryDto) {
     const {
-      category, brand, minPrice, maxPrice,
+      category, subcategory, brand, minPrice, maxPrice,  // ✅ subcategory ajouté
       status, search, page = 1, limit = 50,
       sortBy = 'createdAt', order = 'DESC',
     } = query;
@@ -27,7 +28,7 @@ export class ProductsService {
     const qb = this.productsRepository.createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category');
 
-    // FIX : filtrer catégorie par slug OU name OU id
+    // Filtrer par catégorie (slug ou name)
     if (category) {
       qb.andWhere(
         '(LOWER(category.slug) = LOWER(:cat) OR LOWER(category.name) = LOWER(:cat))',
@@ -35,11 +36,15 @@ export class ProductsService {
       );
     }
 
+    // ✅ NOUVEAU — Filtrer par sous-catégorie
+    if (subcategory) {
+      qb.andWhere('LOWER(product.subcategory) = LOWER(:subcategory)', { subcategory });
+    }
+
     if (brand)    qb.andWhere('product.brand = :brand', { brand });
     if (minPrice) qb.andWhere('product.price >= :minPrice', { minPrice: Number(minPrice) });
     if (maxPrice) qb.andWhere('product.price <= :maxPrice', { maxPrice: Number(maxPrice) });
 
-    // FIX : pas de filtre status par defaut -> retourne tout
     if (status) {
       qb.andWhere('product.status = :status', { status });
     }
@@ -170,34 +175,6 @@ export class ProductsService {
     if (existing > 0) {
       return { message: `Base deja peuplee : ${existing} produits`, count: existing };
     }
-
-    const items = [
-      { name: 'Echarpe Violette',  price: 40, stock: 15, images: ['/images/scarfs/violet.jpeg'],            description: 'Echarpe en cachemire violette, douce et elegante.' },
-      { name: 'Echarpe Bordeaux',  price: 40, stock: 10, images: ['/images/scarfs/burgundy.jpeg'],          description: 'Echarpe bordeaux en laine fine.' },
-      { name: 'Echarpe Zebree',    price: 40, stock: 8,  images: ['/images/scarfs/zebra1.jpeg'],            description: 'Echarpe motif zebre, tendance et originale.' },
-      { name: 'Echarpe Rouge',     price: 40, stock: 20, images: ['/images/scarfs/red2.jpeg'],              description: 'Echarpe rouge vif en coton premium.' },
-      { name: 'Echarpe Blanche',   price: 40, stock: 12, images: ['/images/scarfs/white.jpeg'],             description: 'Echarpe blanche legere, parfaite pour ete.' },
-      { name: 'Echarpe Rose',      price: 40, stock: 9,  images: ['/images/scarfs/marrose.jpeg'],           description: 'Echarpe rose mauve en soie naturelle.' },
-      { name: 'Echarpe Vache',     price: 40, stock: 11, images: ['/images/scarfs/cow.jpeg'],               description: 'Echarpe motif vache, audacieuse et fun.' },
-      { name: 'Accessoire Cerise', price: 15, stock: 25, images: ['/images/accessoires/cerise.jpeg'],       description: 'Bijou cerise artisanal, fait main a Tunis.' },
-      { name: 'Bracelet Elegant',  price: 20, stock: 30, images: ['/images/accessoires/braclet.jpeg'],      description: 'Bracelet fait main, finitions soignees.' },
-      { name: 'Collier Fleur',     price: 25, stock: 18, images: ['/images/accessoires/collierfleur.jpeg'], description: 'Collier floral artisanal en metal dore.' },
-      { name: 'Papillon',          price: 20, stock: 22, images: ['/images/accessoires/papillon.jpg'],      description: 'Accessoire papillon decoratif.' },
-      { name: 'Collier Perles',    price: 25, stock: 14, images: ['/images/accessoires/collier1.jpeg'],     description: 'Collier en perles naturelles.' },
-      { name: 'Coquettes',         price: 15, stock: 16, images: ['/images/accessoires/coquettes.jpeg'],    description: 'Accessoires coquettes assortis.' },
-    ];
-
-    const products = await this.productsRepository.save(
-      items.map(p => this.productsRepository.create({
-        ...p,
-        status: ProductStatus.PUBLISHED,
-        isActive: true,
-        viewsCount: 0,
-        dimensions: {},
-        metadata: {},
-      }))
-    );
-
-    return { message: `${products.length} produits crees`, count: products.length };
+    return { message: 'Utilisez seed-categories.ts pour le seed complet', count: 0 };
   }
 }

@@ -1,4 +1,4 @@
-// apps/backend/src/categories/categories.entity.ts
+// backend/src/categories/categories.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity('categories')
@@ -11,4 +11,8 @@ export class Category {
 
   @Column({ type: 'varchar', length: 100, unique: true })
   slug: string;
+
+  
+  @Column({ type: 'jsonb', default: [] })
+  subcategories: { label: string; slug: string }[];
 }

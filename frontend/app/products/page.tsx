@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
-// ✅ En local : localhost:3000 | En Docker : backend:3000
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 interface Product {
@@ -13,7 +13,8 @@ interface Product {
   price: number;
   images?: string[];
   status?: string;
-  category?: { name: string; slug?: string };
+  subcategory?: string;
+  category?: { name: string; slug?: string; subcategories?: { label: string; slug: string }[] };
 }
 
 const CATEGORIES = [
@@ -23,7 +24,24 @@ const CATEGORIES = [
   { id: 'accessories', label: 'Accessories' },
 ];
 
-// ── Wrap in Suspense to allow useSearchParams ─────────────────────────────
+// Sous-catégories définies côté frontend (en sync avec le seed)
+const SUBCATEGORIES: Record<string, { label: string; slug: string }[]> = {
+  clothing: [
+    { label: 'Coats',     slug: 'coats'     },
+    { label: 'Vestes',    slug: 'vestes'    },
+    { label: 'Sets',      slug: 'sets'      },
+    { label: 'Pantalons', slug: 'pantalons' },
+    { label: 'Chemises', slug: 'chemises' },
+  ],
+  accessories: [
+    { label: 'Colliers',           slug: 'colliers'          },
+    { label: 'Bracelets',          slug: 'bracelets'         },
+    { label: "Boucles d'oreilles", slug: 'boucles-doreilles' },
+    { label: 'Bagues',             slug: 'bagues' },
+  ],
+  scarfs: [],
+};
+
 export default function ProductsPageWrapper() {
   return (
     <Suspense fallback={<LoadingView />}>
@@ -33,18 +51,22 @@ export default function ProductsPageWrapper() {
 }
 
 function ProductsPage() {
-  const searchParams = useSearchParams();
+  const searchParams  = useSearchParams();
   const categoryParam = searchParams.get('category') ?? '';
 
-  const [products, setProducts]     = useState<Product[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState('');
-  const [activeFilter, setActive]   = useState(categoryParam);
-  const [sortBy, setSortBy]         = useState('newest');
-  const [hoveredId, setHoveredId]   = useState<string | null>(null);
+  const [products,   setProducts]  = useState<Product[]>([]);
+  const [loading,    setLoading]   = useState(true);
+  const [error,      setError]     = useState('');
+  const [activeFilter, setActive]  = useState(categoryParam);
+  const [subFilter,  setSubFilter] = useState('');   // ✅ NOUVEAU
+  const [sortBy,     setSortBy]    = useState('newest');
+  const [hoveredId,  setHoveredId] = useState<string | null>(null);
 
-  // Sync URL param → local filter
+  // Sync URL param → filtre local
   useEffect(() => { setActive(categoryParam); }, [categoryParam]);
+
+  // ✅ Reset sous-catégorie quand on change de catégorie principale
+  useEffect(() => { setSubFilter(''); }, [activeFilter]);
 
   useEffect(() => {
     setLoading(true);
@@ -52,7 +74,7 @@ function ProductsPage() {
 
     const url = new URL(`${API_URL}/products`);
     if (activeFilter) url.searchParams.set('category', activeFilter);
-    // Don't filter by status in case backend doesn't have published products yet
+    if (subFilter)    url.searchParams.set('subcategory', subFilter);  // ✅ NOUVEAU
     if (sortBy === 'newest')     url.searchParams.set('sortBy', 'createdAt');
     if (sortBy === 'price-asc')  { url.searchParams.set('sortBy', 'price'); url.searchParams.set('order', 'ASC'); }
     if (sortBy === 'price-desc') { url.searchParams.set('sortBy', 'price'); url.searchParams.set('order', 'DESC'); }
@@ -64,7 +86,6 @@ function ProductsPage() {
         return res.json();
       })
       .then(data => {
-        // Handle both { data: [] } and [] response shapes
         const list = Array.isArray(data) ? data : (data.data ?? data.products ?? []);
         setProducts(list);
       })
@@ -73,10 +94,10 @@ function ProductsPage() {
         setError('Impossible de charger les produits. Vérifiez que le backend est démarré.');
       })
       .finally(() => setLoading(false));
-  }, [activeFilter, sortBy]);
+  }, [activeFilter, subFilter, sortBy]);  // ✅ subFilter ajouté aux dépendances
 
-  // ── Category name for heading ─────────────────────────────────────────
   const catLabel = CATEGORIES.find(c => c.id === activeFilter)?.label ?? 'Tous les produits';
+  const subcats  = SUBCATEGORIES[activeFilter] ?? [];  // ✅ sous-catégories de la catégorie active
 
   return (
     <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", background: '#fff', minHeight: '100vh' }}>
@@ -96,20 +117,18 @@ function ProductsPage() {
         )}
       </section>
 
-      {/* ── FILTERS BAR ──────────────────────────────────── */}
+      {/* ── FILTERS BAR — catégories principales ─────────── */}
       <div style={{
         borderBottom: '1px solid #f0f0f0', background: '#fff',
         padding: '0 6vw', position: 'sticky', top: 68, zIndex: 50,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         flexWrap: 'wrap', gap: 16,
       }}>
-        {/* Category pills */}
         <div style={{ display: 'flex', gap: 0 }}>
           {CATEGORIES.map(cat => (
             <button key={cat.id}
               onClick={() => {
                 setActive(cat.id);
-                // Update URL without navigation
                 const url = new URL(window.location.href);
                 if (cat.id) url.searchParams.set('category', cat.id);
                 else url.searchParams.delete('category');
@@ -128,7 +147,6 @@ function ProductsPage() {
           ))}
         </div>
 
-        {/* Sort */}
         <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{
           padding: '8px 16px', border: '1px solid #e8e8e8',
           background: '#fff', fontFamily: 'inherit',
@@ -141,20 +159,60 @@ function ProductsPage() {
         </select>
       </div>
 
+      {/* ── SOUS-CATÉGORIES BAR ✅ — visible seulement si subcats existent ── */}
+      {subcats.length > 0 && (
+        <div style={{
+          borderBottom: '1px solid #f0f0f0',
+          background: '#fafafa',
+          padding: '0 6vw',
+          display: 'flex',
+          gap: 0,
+          overflowX: 'auto',
+          position: 'sticky',
+          top: 122,   // juste en dessous de la filters bar
+          zIndex: 49,
+        }}>
+          {/* Bouton "Tous" */}
+          <button
+            onClick={() => setSubFilter('')}
+            style={{
+              padding: '12px 20px', border: 'none', background: 'none',
+              cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase',
+              color: subFilter === '' ? '#111' : '#bbb',
+              borderBottom: subFilter === '' ? '2px solid #111' : '2px solid transparent',
+              transition: 'all 0.2s', whiteSpace: 'nowrap',
+            }}>
+            Tous
+          </button>
+
+          {subcats.map(sub => (
+            <button
+              key={sub.slug}
+              onClick={() => setSubFilter(sub.slug)}
+              style={{
+                padding: '12px 20px', border: 'none', background: 'none',
+                cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase',
+                color: subFilter === sub.slug ? '#111' : '#bbb',
+                borderBottom: subFilter === sub.slug ? '2px solid #111' : '2px solid transparent',
+                transition: 'all 0.2s', whiteSpace: 'nowrap',
+              }}>
+              {sub.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── CONTENT ──────────────────────────────────────── */}
       <div style={{ maxWidth: 1300, margin: '0 auto', padding: '60px 6vw' }}>
 
-        {/* Loading */}
         {loading && <LoadingView />}
 
-        {/* Error */}
         {!loading && error && (
           <div style={{ textAlign: 'center', padding: '80px 0' }}>
             <p style={{ fontSize: 40, marginBottom: 16 }}>⚠️</p>
             <p style={{ fontSize: 15, color: '#c0392b', marginBottom: 12 }}>{error}</p>
-            <p style={{ fontSize: 12, color: '#aaa', marginBottom: 32, letterSpacing: '0.05em' }}>
-              Vérifiez que le backend NestJS tourne sur le port 3000
-            </p>
             <button onClick={() => setLoading(true)} style={{
               padding: '12px 32px', background: '#111', color: '#fff',
               border: 'none', cursor: 'pointer', fontFamily: 'inherit',
@@ -165,7 +223,6 @@ function ProductsPage() {
           </div>
         )}
 
-        {/* Empty state */}
         {!loading && !error && products.length === 0 && (
           <div style={{ textAlign: 'center', padding: '80px 0' }}>
             <p style={{ fontSize: 48, marginBottom: 20 }}>🧣</p>
@@ -173,9 +230,13 @@ function ProductsPage() {
               Aucun produit trouvé
             </h2>
             <p style={{ fontSize: 13, color: '#aaa', marginBottom: 32 }}>
-              {activeFilter ? `Aucun produit dans la catégorie "${catLabel}"` : 'Aucun produit disponible pour le moment'}
+              {subFilter
+                ? `Aucun produit dans cette sous-catégorie`
+                : activeFilter
+                  ? `Aucun produit dans "${catLabel}"`
+                  : 'Aucun produit disponible pour le moment'}
             </p>
-            <button onClick={() => setActive('')} style={{
+            <button onClick={() => { setActive(''); setSubFilter(''); }} style={{
               padding: '12px 32px', background: 'transparent', color: '#111',
               border: '1px solid #111', cursor: 'pointer', fontFamily: 'inherit',
               fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase',
@@ -185,7 +246,6 @@ function ProductsPage() {
           </div>
         )}
 
-        {/* Grid */}
         {!loading && !error && products.length > 0 && (
           <div style={{
             display: 'grid',
@@ -226,7 +286,7 @@ function ProductCard({ product, hovered, onHover }: {
   async function addToCart(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-     await addItem(product.id, 1); 
+    await addItem(product.id, 1);
     setAdded(true);
     setTimeout(() => setAdded(false), 1800);
   }
@@ -237,25 +297,20 @@ function ProductCard({ product, hovered, onHover }: {
       onMouseOut={() => onHover(null)}>
 
       <Link href={`/products/${product.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-
-        {/* Image */}
         <div style={{ aspectRatio: '3/4', background: '#f8f8f8', overflow: 'hidden', position: 'relative' }}>
           <img src={img} alt={product.name} style={{
             width: '100%', height: '100%', objectFit: 'cover',
             transform: hovered ? 'scale(1.05)' : 'scale(1)',
             transition: 'transform 0.7s cubic-bezier(0.16,1,0.3,1)',
           }} />
-
-          {/* Overlay hover */}
           <div style={{
             position: 'absolute', inset: 0,
             background: 'rgba(0,0,0,0.18)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
-            padding: '0 16px 16px', gap: 8,
+            display: 'flex', alignItems: 'flex-end',
+            padding: '0 16px 16px',
             opacity: hovered ? 1 : 0,
             transition: 'opacity 0.3s',
           }}>
-            {/* Bouton Voir produit */}
             <span style={{
               background: '#fff', color: '#111', padding: '10px 0',
               fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase',
@@ -267,11 +322,14 @@ function ProductCard({ product, hovered, onHover }: {
           </div>
         </div>
 
-        {/* Info */}
         <div style={{ padding: '14px 4px 8px' }}>
           {product.category && (
             <p style={{ fontSize: 9, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#bbb', marginBottom: 6 }}>
               {product.category.name}
+              {/* ✅ Affiche la sous-catégorie si elle existe */}
+              {product.subcategory && (
+                <span style={{ color: '#ddd' }}> · {product.subcategory}</span>
+              )}
             </p>
           )}
           <h3 style={{ fontSize: 15, fontWeight: 400, margin: '0 0 6px', lineHeight: 1.3 }}>
@@ -283,7 +341,6 @@ function ProductCard({ product, hovered, onHover }: {
         </div>
       </Link>
 
-      {/* Bouton Add to Cart — en dehors du Link */}
       <button onClick={addToCart} style={{
         width: '100%', padding: '10px 0',
         background: added ? '#4a9e6f' : '#111',
@@ -299,7 +356,6 @@ function ProductCard({ product, hovered, onHover }: {
   );
 }
 
-// ─── LOADING ──────────────────────────────────────────────────────────────
 function LoadingView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 0' }}>
