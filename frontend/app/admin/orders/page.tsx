@@ -1,6 +1,7 @@
- 'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -32,33 +33,70 @@ const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }
 };
 
 export default function AdminOrdersPage() {
-  const [orders,    setOrders]    = useState<Order[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [selected,  setSelected]  = useState<Order | null>(null);
-  const [filter,    setFilter]    = useState('all');
+  const router = useRouter();
+  const [orders,   setOrders]   = useState<Order[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [selected, setSelected] = useState<Order | null>(null);
+  const [filter,   setFilter]   = useState('all');
 
+  // ✅ GUARD FRONTEND — redirige vers /admin/login si pas admin
   useEffect(() => {
-    fetch(`${API_URL}/orders`)
-      .then(r => r.json())
-      .then(data => { setOrders(Array.isArray(data) ? data : []); })
+    const token   = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+
+    if (!token || !userStr) {
+      router.replace('/admin/login');
+      return;
+    }
+
+    try {
+      const user = JSON.parse(userStr);
+      if (user?.role !== 'admin') {
+        router.replace('/admin/login');
+        return;
+      }
+    } catch {
+      router.replace('/admin/login');
+      return;
+    }
+
+    // ✅ Token JWT inclus dans le header Authorization
+    const token2 = localStorage.getItem('token');
+    fetch(`${API_URL}/orders`, {
+      headers: { Authorization: `Bearer ${token2}` },   // ✅ AJOUTÉ
+    })
+      .then(r => {
+        if (r.status === 401 || r.status === 403) {
+          router.replace('/admin/login');
+          return null;
+        }
+        return r.json();
+      })
+      .then(data => {
+        if (data) setOrders(Array.isArray(data) ? data : []);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [router]);
 
+  // ✅ Token JWT dans updateStatus aussi
   async function updateStatus(id: string, status: string) {
+    const token = localStorage.getItem('token');
     await fetch(`${API_URL}/orders/${id}/status`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,               // ✅ AJOUTÉ
+      },
       body: JSON.stringify({ status }),
     });
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
     if (selected?.id === id) setSelected(prev => prev ? { ...prev, status } : null);
   }
 
-  const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
+  const filtered     = filter === 'all' ? orders : orders.filter(o => o.status === filter);
   const totalRevenue = orders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + Number(o.total), 0);
-
-  const font = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
+  const font         = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
 
   return (
     <div style={{ ...font, background: '#f8f8f8', minHeight: '100vh' }}>
@@ -69,9 +107,21 @@ export default function AdminOrdersPage() {
           <p style={{ fontSize: 10, letterSpacing: '0.5em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 6 }}>JASS — Admin</p>
           <h1 style={{ fontSize: 22, fontWeight: 300, margin: 0 }}>Gestion des commandes</h1>
         </div>
-        <a href="/" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
-          ← Retour au site
-        </a>
+        <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+          <a href="/" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+            ← Retour au site
+          </a>
+          {/* ✅ Bouton déconnexion admin */}
+          <button
+            onClick={() => {
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              router.replace('/admin/login');
+            }}
+            style={{ background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', padding: '6px 14px', fontFamily: 'inherit' }}>
+            Déconnexion
+          </button>
+        </div>
       </div>
 
       {/* STATS */}

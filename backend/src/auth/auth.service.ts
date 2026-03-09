@@ -1,7 +1,8 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+// backend/src/auth/auth.service.ts
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/user.entity';
 
@@ -9,58 +10,52 @@ import { User } from '../users/user.entity';
 export class AuthService {
   constructor(
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userRepo: Repository<User>,
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(dto: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    phone?: string;
-  }) {
-    const existing = await this.userRepository.findOne({ where: { email: dto.email } });
-    if (existing) throw new ConflictException('Cet email est déjà utilisé');
-
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
-
-    const user = this.userRepository.create({
-      firstName: dto.firstName,
-      lastName:  dto.lastName,
-      name:      `${dto.firstName} ${dto.lastName}`,
-      email:     dto.email,
-      phone:     dto.phone,
-      password:  hashedPassword,
-    });
-
-    const saved = await this.userRepository.save(user);
-    const { password, ...result } = saved as any;
-    return result;
+  // ✅ Utilisé par JwtStrategy.validate()
+  async validateUser(id: string): Promise<User | null> {
+    return this.userRepo.findOne({ where: { id } });
   }
 
-  async login(email: string, password: string) {
-    const user = await this.userRepository.findOne({ where: { email } });
-    if (!user) throw new UnauthorizedException('Email ou mot de passe incorrect');
+  async register(name: string, email: string, password: string) {
+    const existing = await this.userRepo.findOne({ where: { email } });
+    if (existing) throw new UnauthorizedException('Email déjà utilisé');
 
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) throw new UnauthorizedException('Email ou mot de passe incorrect');
+    const hash = await bcrypt.hash(password, 10);
+    const user = await this.userRepo.save(
+      this.userRepo.create({ name, email, password: hash })
+    );
 
-    const payload = { sub: user.id, email: user.email };
-    const access_token = this.jwtService.sign(payload);
-
-    const { password: _, ...userWithoutPassword } = user as any;
+    const token = this.jwtService.sign({
+      sub:   user.id,
+      email: user.email,
+      role:  user.role,
+    });
 
     return {
-      access_token,
-      user: {
-        ...userWithoutPassword,
-        name: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email,
-      },
+      access_token: token,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
     };
   }
 
-  async validateUser(userId: string) {
-    return this.userRepository.findOne({ where: { id: userId } });
+  async login(email: string, password: string) {
+    const user = await this.userRepo.findOne({ where: { email } });
+    if (!user) throw new UnauthorizedException('Identifiants invalides');
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) throw new UnauthorizedException('Identifiants invalides');
+
+    const token = this.jwtService.sign({
+      sub:   user.id,
+      email: user.email,
+      role:  user.role,
+    });
+
+    return {
+      access_token: token,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    };
   }
 }

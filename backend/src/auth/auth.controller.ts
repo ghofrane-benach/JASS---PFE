@@ -1,3 +1,4 @@
+// backend/src/auth/auth.controller.ts
 import {
   Controller, Post, Body, HttpCode, HttpStatus,
 } from '@nestjs/common';
@@ -24,7 +25,9 @@ export class AuthController {
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+    // ✅ CORRIGÉ — passe les bons paramètres au service
+    const name = `${dto.firstName} ${dto.lastName}`.trim();
+    return this.authService.register(name, dto.email, dto.password);
   }
 
   // POST /auth/login

@@ -38,10 +38,10 @@ export default function LoginPage() {
         );
       }
 
-      const { access_token, user } = data;
+      const { token, user } = data;
 
       // Stocker le token + user en localStorage
-      localStorage.setItem('token', access_token);
+      localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify({
         ...user,
         name: user.name ?? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),

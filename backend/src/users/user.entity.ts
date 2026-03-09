@@ -1,4 +1,10 @@
+// backend/src/users/user.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+
+export enum UserRole {
+  USER  = 'user',
+  ADMIN = 'admin',
+}
 
 @Entity()
 export class User {
@@ -23,6 +29,9 @@ export class User {
 
   @Column({ nullable: true })
   phone: string;
+
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
+  role: UserRole;                // ✅ CORRIGÉ — dans la classe + décorateur correct
 
   @CreateDateColumn()
   createdAt: Date;
