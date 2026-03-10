@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/component/AuthProvider';
 import { useCart, CartItem } from '../context/CartContext';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -14,9 +14,18 @@ interface Category {
   slug: string;
 }
 
+interface SearchResult {
+  id: string;
+  name: string;
+  price: number;
+  images?: string[];
+  category?: { name: string; slug: string };
+}
+
 export default function Header() {
   const pathname = usePathname();
-  const { user, isLoggedIn } = useAuth();   // ✅ useAuth au lieu de useSession
+  const router   = useRouter();
+  const { user, isLoggedIn, logout } = useAuth();
   const { items, totalQty, isOpen, setIsOpen, removeItem, updateQty } = useCart();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -26,8 +35,74 @@ export default function Header() {
   function openCat()  { if (catTimer.current) clearTimeout(catTimer.current); setCatOpen(true); }
   function closeCat() { catTimer.current = setTimeout(() => setCatOpen(false), 120); }
 
-  const [scrolled,    setScrolled]    = useState(false);
-  const [categories,  setCategories]  = useState<Category[]>([
+  // ── SEARCH ──────────────────────────────────────────────────────────
+  const [searchOpen,    setSearchOpen]    = useState(false);
+  const [searchQuery,   setSearchQuery]   = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchRef   = useRef<HTMLDivElement>(null);
+  const inputRef    = useRef<HTMLInputElement>(null);
+  const searchTimer = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false); setSearchResults([]); setSearchQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  useEffect(() => {
+    if (searchOpen) setTimeout(() => inputRef.current?.focus(), 100);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) { setSearchResults([]); return; }
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res  = await fetch(`${API_URL}/products?search=${encodeURIComponent(searchQuery)}&limit=5`);
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.data ?? []);
+        setSearchResults(list.slice(0, 5));
+      } catch { setSearchResults([]); }
+      finally  { setSearchLoading(false); }
+    }, 350);
+  }, [searchQuery]);
+
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!searchQuery.trim()) return;
+    setSearchOpen(false); setSearchResults([]);
+    router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
+    setSearchQuery('');
+  };
+
+  const handleResultClick = (id: string) => {
+    setSearchOpen(false); setSearchResults([]); setSearchQuery('');
+    router.push(`/products/${id}`);
+  };
+  // ────────────────────────────────────────────────────────────────────
+
+  // ── ACCOUNT DROPDOWN ────────────────────────────────────────────────
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountTimer = useRef<NodeJS.Timeout | null>(null);
+
+  function openAccount()  { if (accountTimer.current) clearTimeout(accountTimer.current); setAccountOpen(true); }
+  function closeAccount() { accountTimer.current = setTimeout(() => setAccountOpen(false), 150); }
+
+  const handleLogout = () => {
+    logout?.();
+    setAccountOpen(false);
+    router.push('/');
+  };
+  // ────────────────────────────────────────────────────────────────────
+
+  const [scrolled,   setScrolled]   = useState(false);
+  const [categories, setCategories] = useState<Category[]>([
     { id: 'clothing',    name: 'Clothing',    slug: 'clothing'    },
     { id: 'scarfs',      name: 'Scarfs',      slug: 'scarfs'      },
     { id: 'accessories', name: 'Accessories', slug: 'accessories' },
@@ -47,7 +122,7 @@ export default function Header() {
   }, []);
 
   const nav = [
-    { name: 'Accueil',        href: '/'        },
+    { name: 'Accueil',         href: '/'        },
     { name: 'JASS Collection', href: '/products' },
     { name: 'Notre Histoire',  href: '/about'   },
     { name: 'Contact',         href: '/contact' },
@@ -111,7 +186,7 @@ export default function Header() {
                       Tous les produits
                     </Link>
                     {categories.map(cat => (
-                      <Link key={cat.id} href={`/products?category=${cat.slug}`} style={{  // ✅ cat.slug
+                      <Link key={cat.id} href={`/products?category=${cat.slug}`} style={{
                         display: 'block', padding: '12px 20px', fontSize: 13,
                         letterSpacing: '0.04em', color: '#333', textDecoration: 'none',
                         borderBottom: '1px solid #f9f9f9', transition: 'background 0.15s',
@@ -128,25 +203,179 @@ export default function Header() {
             </nav>
 
             {/* RIGHT ACTIONS */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
 
-              {/* ✅ useAuth au lieu de useSession */}
-              {isLoggedIn ? (
-                <Link href="/account" style={{ textDecoration: 'none', fontSize: 13, letterSpacing: '0.06em', color: '#111', fontWeight: 500 }}>
-                  {user?.name?.split(' ')[0] ?? 'Mon Compte'}
-                </Link>
-              ) : (
-                <Link href="/login" style={{ textDecoration: 'none', fontSize: 13, letterSpacing: '0.06em', color: '#666', transition: 'color 0.2s' }}
+              {/* ── SEARCH ICON ── */}
+              <div ref={searchRef} style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setSearchOpen(o => !o)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: 0, display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
                   onMouseOver={e => (e.currentTarget.style.color = '#111')}
-                  onMouseOut={e  => (e.currentTarget.style.color = '#666')}>
-                  Mon Compte
-                </Link>
-              )}
+                  onMouseOut={e  => (e.currentTarget.style.color = '#555')}
+                  aria-label="Rechercher"
+                >
+                  <svg width="19" height="19" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                  </svg>
+                </button>
+
+                {searchOpen && (
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 20px)', right: 0,
+                    width: 340, background: '#fff',
+                    border: '1px solid #ececec',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.1)',
+                    zIndex: 300, animation: 'dropIn 0.2s ease',
+                  }}>
+                    <form onSubmit={handleSearchSubmit} style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #f0f0f0', gap: 8 }}>
+                      <svg width="15" height="15" fill="none" stroke="#bbb" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                      </svg>
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="What you are looking for ?"
+                        style={{
+                          flex: 1, border: 'none', outline: 'none', fontSize: 13,
+                          fontFamily: "'Cormorant Garamond', Georgia, serif", color: '#111', background: 'transparent',
+                        }}
+                      />
+                      {searchQuery && (
+                        <button type="button" onClick={() => { setSearchQuery(''); setSearchResults([]); }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: 18, padding: 0, lineHeight: 1 }}>×</button>
+                      )}
+                    </form>
+
+                    {searchLoading && (
+                      <div style={{ padding: '18px', textAlign: 'center', fontSize: 12, color: '#aaa', letterSpacing: '0.1em' }}>Recherche…</div>
+                    )}
+
+                    {!searchLoading && searchResults.length > 0 && (
+                      <>
+                        {searchResults.map(p => (
+                          <div key={p.id} onClick={() => handleResultClick(p.id)}
+                            style={{ display: 'flex', gap: 12, padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #f9f9f9', transition: 'background 0.15s' }}
+                            onMouseOver={e => (e.currentTarget.style.background = '#fafafa')}
+                            onMouseOut={e  => (e.currentTarget.style.background = 'transparent')}
+                          >
+                            <div style={{ width: 38, height: 48, background: '#f5f5f5', flexShrink: 0, overflow: 'hidden' }}>
+                              <img src={p.images?.[0] ?? '/images/placeholder.jpg'} alt={p.name}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontSize: 13, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</p>
+                              {p.category && <p style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#bbb', margin: '0 0 3px' }}>{p.category.name}</p>}
+                              <p style={{ fontSize: 13, color: '#111', margin: 0 }}>{Number(p.price).toFixed(2)} TND</p>
+                            </div>
+                          </div>
+                        ))}
+                        <button onClick={() => handleSearchSubmit()}
+                          style={{ width: '100%', padding: '12px', background: 'none', border: 'none', borderTop: '1px solid #f0f0f0', cursor: 'pointer', fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase', color: '#888', fontFamily: 'inherit' }}>
+                          Voir tous les résultats →
+                        </button>
+                      </>
+                    )}
+
+                    {!searchLoading && searchQuery.trim() && searchResults.length === 0 && (
+                      <div style={{ padding: '20px 16px', textAlign: 'center', fontSize: 13, color: '#aaa' }}>
+                        Aucun résultat pour « {searchQuery} »
+                      </div>
+                    )}
+
+                    {!searchQuery && (
+                      <div style={{ padding: '16px', fontSize: 12, color: '#ccc', textAlign: 'center', letterSpacing: '0.05em' }}>
+                        Tapez pour rechercher…
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* ── ACCOUNT ICON + DROPDOWN ── */}
+              <div style={{ position: 'relative' }} onMouseEnter={openAccount} onMouseLeave={closeAccount}>
+                <button
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: 0, display: 'flex', alignItems: 'center', gap: 6, transition: 'color 0.2s' }}
+                  onMouseOver={e => (e.currentTarget.style.color = '#111')}
+                  onMouseOut={e  => (e.currentTarget.style.color = '#555')}
+                  aria-label="Mon compte"
+                >
+                  <svg width="19" height="19" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+                  </svg>
+                  {isLoggedIn && (
+                    <span style={{ fontSize: 12, letterSpacing: '0.06em', color: '#111' }} className="desktop-nav">
+                      {user?.name?.split(' ')[0] ?? ''}
+                    </span>
+                  )}
+                </button>
+
+                {accountOpen && (
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 20px)', right: 0,
+                    width: 200, background: '#fff',
+                    border: '1px solid #ececec',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.1)',
+                    zIndex: 300, animation: 'dropIn 0.2s ease',
+                  }} onMouseEnter={openAccount} onMouseLeave={closeAccount}>
+
+                    {isLoggedIn ? (
+                      <>
+                        {/* Info utilisateur */}
+                        <div style={{ padding: '14px 18px', borderBottom: '1px solid #f5f5f5' }}>
+                          <p style={{ fontSize: 13, margin: 0, fontWeight: 500, color: '#111' }}>{user?.name}</p>
+                          <p style={{ fontSize: 11, margin: '2px 0 0', color: '#aaa', letterSpacing: '0.03em' }}>{user?.email}</p>
+                        </div>
+                        {[
+                          { label: 'Mon Compte',    href: '/account'        },
+                          { label: 'Mes Commandes', href: '/account/orders' },
+                        ].map(link => (
+                          <Link key={link.href} href={link.href} onClick={() => setAccountOpen(false)}
+                            style={{ display: 'block', padding: '11px 18px', fontSize: 13, letterSpacing: '0.04em', color: '#444', textDecoration: 'none', borderBottom: '1px solid #f9f9f9', transition: 'background 0.15s' }}
+                            onMouseOver={e => (e.currentTarget.style.background = '#fafafa')}
+                            onMouseOut={e  => (e.currentTarget.style.background = 'transparent')}
+                          >
+                            {link.label}
+                          </Link>
+                        ))}
+                        <button onClick={handleLogout}
+                          style={{ width: '100%', padding: '11px 18px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 13, letterSpacing: '0.04em', color: '#c0392b', fontFamily: 'inherit', transition: 'background 0.15s' }}
+                          onMouseOver={e => (e.currentTarget.style.background = '#fff8f8')}
+                          onMouseOut={e  => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          Déconnexion
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Link href="/login" onClick={() => setAccountOpen(false)}
+                          style={{ display: 'block', padding: '13px 18px', fontSize: 13, letterSpacing: '0.06em', color: '#111', textDecoration: 'none', borderBottom: '1px solid #f5f5f5', transition: 'background 0.15s' }}
+                          onMouseOver={e => (e.currentTarget.style.background = '#fafafa')}
+                          onMouseOut={e  => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          Connexion
+                        </Link>
+                        <Link href="/register" onClick={() => setAccountOpen(false)}
+                          style={{ display: 'block', padding: '13px 18px', fontSize: 13, letterSpacing: '0.06em', color: '#666', textDecoration: 'none', transition: 'background 0.15s' }}
+                          onMouseOver={e => (e.currentTarget.style.background = '#fafafa')}
+                          onMouseOut={e  => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          Créer un compte
+                        </Link>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Cart icon */}
               <button onClick={() => setIsOpen(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#111', position: 'relative', padding: 0, display: 'flex' }}>
-                <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#555', position: 'relative', padding: 0, display: 'flex', transition: 'color 0.2s' }}
+                onMouseOver={e => (e.currentTarget.style.color = '#111')}
+                onMouseOut={e  => (e.currentTarget.style.color = '#555')}
+              >
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                     d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
@@ -181,20 +410,68 @@ export default function Header() {
         {/* MOBILE MENU */}
         {menuOpen && (
           <div style={{ borderTop: '1px solid #f0f0f0', background: '#fff', padding: '24px 6vw 32px', animation: 'dropIn 0.2s ease' }}>
+
+            {/* Search mobile */}
+            <form onSubmit={handleSearchSubmit} style={{ display: 'flex', alignItems: 'center', border: '1px solid #e8e8e8', padding: '10px 14px', marginBottom: 20, gap: 8 }}>
+              <svg width="14" height="14" fill="none" stroke="#bbb" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Rechercher…"
+                style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', background: 'transparent' }}
+              />
+            </form>
+
             {nav.map(item => (
               <Link key={item.name} href={item.href} onClick={() => setMenuOpen(false)}
                 style={{ display: 'block', padding: '12px 0', textDecoration: 'none', fontSize: 16, letterSpacing: '0.06em', color: isActive(item.href) ? '#111' : '#555', borderBottom: '1px solid #f5f5f5' }}>
                 {item.name}
               </Link>
             ))}
+
             <div style={{ marginTop: 16 }}>
               <p style={{ fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#aaa', marginBottom: 8 }}>Catégories</p>
               {categories.map(cat => (
-                <Link key={cat.id} href={`/products?category=${cat.slug}`} onClick={() => setMenuOpen(false)}  // ✅ cat.slug
+                <Link key={cat.id} href={`/products?category=${cat.slug}`} onClick={() => setMenuOpen(false)}
                   style={{ display: 'block', padding: '10px 0', textDecoration: 'none', fontSize: 15, letterSpacing: '0.04em', color: '#555', borderBottom: '1px solid #f9f9f9' }}>
                   {cat.name}
                 </Link>
               ))}
+            </div>
+
+            {/* Compte mobile */}
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
+              {isLoggedIn ? (
+                <>
+                  <p style={{ fontSize: 12, color: '#aaa', margin: '0 0 10px', letterSpacing: '0.05em' }}>Bonjour, {user?.name?.split(' ')[0]}</p>
+                  <Link href="/account" onClick={() => setMenuOpen(false)}
+                    style={{ display: 'block', padding: '10px 0', textDecoration: 'none', fontSize: 14, color: '#444', borderBottom: '1px solid #f9f9f9' }}>
+                    Mon Compte
+                  </Link>
+                  <Link href="/account/orders" onClick={() => setMenuOpen(false)}
+                    style={{ display: 'block', padding: '10px 0', textDecoration: 'none', fontSize: 14, color: '#444', borderBottom: '1px solid #f9f9f9' }}>
+                    Mes Commandes
+                  </Link>
+                  <button onClick={handleLogout}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '10px 0', fontSize: 14, color: '#c0392b', fontFamily: 'inherit', textAlign: 'left' }}>
+                    Déconnexion
+                  </button>
+                </>
+              ) : (
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <Link href="/login" onClick={() => setMenuOpen(false)}
+                    style={{ flex: 1, padding: '11px', border: '1px solid #111', textAlign: 'center', textDecoration: 'none', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#111' }}>
+                    Connexion
+                  </Link>
+                  <Link href="/register" onClick={() => setMenuOpen(false)}
+                    style={{ flex: 1, padding: '11px', background: '#111', textAlign: 'center', textDecoration: 'none', fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#fff' }}>
+                    Créer un compte
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -227,9 +504,9 @@ export default function Header() {
                   <p style={{ fontSize: 14, color: '#aaa' }}>Votre panier est vide</p>
                 </div>
               ) : (
-              items.map((item: CartItem, index: number) => (
-              <div key={item.id ?? index} 
-                style={{ display: 'flex', gap: 12, paddingBottom: 16, marginBottom: 16, borderBottom: '1px solid #f5f5f5' }}>
+                items.map((item: CartItem, index: number) => (
+                  <div key={item.id ?? index}
+                    style={{ display: 'flex', gap: 12, paddingBottom: 16, marginBottom: 16, borderBottom: '1px solid #f5f5f5' }}>
                     <div style={{ width: 64, height: 80, background: '#f8f8f8', flexShrink: 0, overflow: 'hidden' }}>
                       <img src={item.image || '/images/placeholder.jpg'} alt={item.name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -256,7 +533,7 @@ export default function Header() {
             </div>
 
             {items.length > 0 && (() => {
-              const subtotal = items.reduce((s: number, i: { price: any; qty: number; }) => s + Number(i.price) * i.qty, 0);
+              const subtotal = items.reduce((s: number, i: { price: any; qty: number }) => s + Number(i.price) * i.qty, 0);
               return (
                 <div style={{ padding: '16px 24px', borderTop: '1px solid #f0f0f0' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>

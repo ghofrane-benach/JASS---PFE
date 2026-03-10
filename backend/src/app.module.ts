@@ -26,6 +26,7 @@ import { CartModule } from './cart/cart.module';
         retryDelay: 3000,
       }),
       inject: [ConfigService],
+      
     }),
     UsersModule,
     CategoriesModule,
@@ -33,6 +34,7 @@ import { CartModule } from './cart/cart.module';
     AuthModule,
     OrdersModule,
     CartModule,
+    
   ],
 })
 export class AppModule {}

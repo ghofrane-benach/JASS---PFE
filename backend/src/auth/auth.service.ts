@@ -14,7 +14,6 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  // ✅ Utilisé par JwtStrategy.validate()
   async validateUser(id: string): Promise<User | null> {
     return this.userRepo.findOne({ where: { id } });
   }
@@ -41,10 +40,24 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const user = await this.userRepo.findOne({ where: { email } });
+    //  Utiliser getRepository avec query raw pour éviter le problème du mot réservé "user"
+    const users = await this.userRepo.query(
+      `SELECT * FROM "user" WHERE email = $1 LIMIT 1`,
+      [email]
+    );
+
+    const user = users?.[0];
+
+    console.log('🔍 Login attempt:', email);
+    console.log('🔍 User found:', !!user);
+    console.log('🔍 Has password:', !!user?.password);
+
     if (!user) throw new UnauthorizedException('Identifiants invalides');
+    if (!user.password) throw new UnauthorizedException('Identifiants invalides');
 
     const valid = await bcrypt.compare(password, user.password);
+    console.log('🔍 Password valid:', valid);
+
     if (!valid) throw new UnauthorizedException('Identifiants invalides');
 
     const token = this.jwtService.sign({
@@ -55,7 +68,12 @@ export class AuthService {
 
     return {
       access_token: token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: {
+        id:   user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
     };
   }
 }

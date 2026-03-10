@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DataSource } from 'typeorm';
 import { seedCategories } from './seeds/seed-categories';
+import { seedAdmin } from './seeds/seed-admin';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
@@ -13,24 +14,24 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const port = process.env.PORT ?? 3000;
+  // ✅ whitelist: false — sinon les champs sans @IsString() etc. sont supprimés
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: false,
+    forbidNonWhitelisted: false,
+    transform: true,
+  }));
 
-  // ✅ app.listen() D'ABORD — TypeORM est prêt seulement après
-  await app.listen(port); 
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
   console.log(`🚀 Backend JASS démarré sur http://localhost:${port}`);
 
-  // ✅ Seed APRÈS que l'app soit complètement démarrée
   try {
     const dataSource = app.get(DataSource);
     await seedCategories(dataSource);
+    await seedAdmin(dataSource);
   } catch (err) {
     console.error('❌ Seed error:', err.message);
   }
-  app.useGlobalPipes(new ValidationPipe({
-  whitelist: true,      // supprime les champs non déclarés dans le DTO
-  forbidNonWhitelisted: true,  // retourne 400 si champ inconnu reçu
-  transform: true,      // convertit les types automatiquement
-}));
 }
 
 bootstrap();
