@@ -5,7 +5,6 @@ import { User } from './user.entity';
 
 @Injectable()
 export class UsersService {
-
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
@@ -16,7 +15,10 @@ export class UsersService {
     return this.userRepository.save(user);
   }
 
-  findAll() {
-    return this.userRepository.find();
+  async findAll() {
+    const users = await this.userRepository.find({
+      order: { createdAt: 'DESC' },
+    });
+    return users.map(({ password, ...u }) => u);
   }
 }

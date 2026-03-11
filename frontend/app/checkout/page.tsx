@@ -1,10 +1,10 @@
 'use client';
 
-import { JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal, useState } from 'react';
+import { JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { useRouter } from 'next/navigation';
-
+import { useAuth } from '@/component/AuthProvider';
 type Step = 'livraison' | 'paiement' | 'confirmation';
 
 export default function CheckoutPage() {
@@ -12,13 +12,26 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('livraison');
   const [loading, setLoading] = useState(false);
+  const { user, token } = useAuth();
   const [form, setForm] = useState({
-    firstName: '', lastName: '', email: '', phone: '',
-    address: '', city: '', zip: '',
+    firstName: user?.name?.split(' ')[0] ?? '',  // ← depuis user
+    lastName:  user?.name?.split(' ').slice(1).join(' ') ?? '',
+    email:     user?.email ?? '',                 // ← depuis user
+    phone:     '',
+    address:   '', city: 'Tunis', zip: '',
     cardName: '', cardNumber: '', expiry: '', cvv: '',
     payMethod: 'card' as 'card' | 'cash',
   });
-
+useEffect(() => {
+    if (user) {
+      setForm(f => ({
+        ...f,
+        firstName: f.firstName || user.name?.split(' ')[0] || '',
+        lastName:  f.lastName  || user.name?.split(' ').slice(1).join(' ') || '',
+        email:     f.email     || user.email || '',
+      }));
+    }
+  }, [user]);
   const subtotal = items.reduce((s: number, i: { price: any; qty: number; }) => s + Number(i.price) * i.qty, 0);
   const shipping  = subtotal > 0 ? 8 : 0;
   const total     = subtotal + shipping;
@@ -36,36 +49,40 @@ export default function CheckoutPage() {
   }
 
   async function placeOrder() {
-    setLoading(true);
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-      const res = await fetch(`${API_URL}/orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: form.firstName,
-          lastName:  form.lastName,
-          email:     form.email,
-          phone:     form.phone,
-          address:   form.address,
-          city:      form.city,
-          zip:       form.zip,
-          payMethod: form.payMethod,
-          subtotal,
-          shipping,
-          total,
-          items: items.map((i: { id: any; name: any; price: any; image: any; qty: any; }) => ({ id: i.id, name: i.name, price: i.price, image: i.image, qty: i.qty })),
-        }),
-      });
-      if (!res.ok) throw new Error('Erreur serveur');
-      clearCart();
-      setStep('confirmation');
-    } catch (err) {
-      alert('Erreur lors de la commande. Veuillez réessayer.');
-    } finally {
-      setLoading(false);
-    }
+  setLoading(true);
+  try {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+    const token = localStorage.getItem('token'); // ← AJOUTE
+    const res = await fetch(`${API_URL}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}), // ← AJOUTE
+      },
+      body: JSON.stringify({
+        firstName: form.firstName,
+        lastName:  form.lastName,
+        email:     form.email,
+        phone:     form.phone,
+        address:   form.address,
+        city:      form.city,
+        zip:       form.zip,
+        payMethod: form.payMethod,
+        subtotal, shipping, total,
+        items: items.map((i: any) => ({
+          id: i.id, name: i.name, price: i.price, image: i.image, qty: i.qty
+        })),
+      }),
+    });
+    if (!res.ok) throw new Error('Erreur serveur');
+    clearCart();
+    setStep('confirmation');
+  } catch (err) {
+    alert('Erreur lors de la commande. Veuillez réessayer.');
+  } finally {
+    setLoading(false);
   }
+}
 
   if (items.length === 0 && step !== 'confirmation') {
     return (

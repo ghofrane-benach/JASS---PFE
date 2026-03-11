@@ -20,7 +20,7 @@ export class ProductsService {
 
   async findAll(query: ProductQueryDto) {
     const {
-      category, subcategory, brand, minPrice, maxPrice,  // ✅ subcategory ajouté
+      category, subcategory, brand, minPrice, maxPrice,
       status, search, page = 1, limit = 50,
       sortBy = 'createdAt', order = 'DESC',
     } = query;
@@ -28,7 +28,6 @@ export class ProductsService {
     const qb = this.productsRepository.createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category');
 
-    // Filtrer par catégorie (slug ou name)
     if (category) {
       qb.andWhere(
         '(LOWER(category.slug) = LOWER(:cat) OR LOWER(category.name) = LOWER(:cat))',
@@ -36,7 +35,6 @@ export class ProductsService {
       );
     }
 
-    // ✅ NOUVEAU — Filtrer par sous-catégorie
     if (subcategory) {
       qb.andWhere('LOWER(product.subcategory) = LOWER(:subcategory)', { subcategory });
     }
@@ -44,10 +42,7 @@ export class ProductsService {
     if (brand)    qb.andWhere('product.brand = :brand', { brand });
     if (minPrice) qb.andWhere('product.price >= :minPrice', { minPrice: Number(minPrice) });
     if (maxPrice) qb.andWhere('product.price <= :maxPrice', { maxPrice: Number(maxPrice) });
-
-    if (status) {
-      qb.andWhere('product.status = :status', { status });
-    }
+    if (status)   qb.andWhere('product.status = :status', { status });
 
     if (search) {
       qb.andWhere(
@@ -110,15 +105,25 @@ export class ProductsService {
     return { message: `Produit #${id} archive` };
   }
 
-  async publish(id: string, user?: User): Promise<Product> {
+  async publish(id: string): Promise<Product> {
     const product = await this.findOne(id);
     product.status = ProductStatus.PUBLISHED;
+    // Si stock était 0, remettre à 1 pour cohérence
+    if (product.stock === 0) product.stock = 1;
     return this.productsRepository.save(product);
   }
 
-  async unpublish(id: string, user?: User): Promise<Product> {
+  async unpublish(id: string): Promise<Product> {
     const product = await this.findOne(id);
     product.status = ProductStatus.DRAFT;
+    return this.productsRepository.save(product);
+  }
+
+  // ✅ Nouvelle méthode — marquer rupture de stock
+  async outOfStock(id: string): Promise<Product> {
+    const product = await this.findOne(id);
+    product.status = ProductStatus.OUT_OF_STOCK;
+    product.stock  = 0;
     return this.productsRepository.save(product);
   }
 
@@ -146,11 +151,11 @@ export class ProductsService {
       .getMany();
   }
 
-  async updateStock(productId: string, quantity: number): Promise<Product> {
+  // ✅ Corrigé — set le stock directement (pas soustraction)
+  async updateStock(productId: string, stock: number): Promise<Product> {
     const product = await this.findOne(productId);
-    if (product.stock < quantity) throw new BadRequestException('Stock insuffisant');
-    product.stock -= quantity;
-    if (product.stock === 0) product.status = ProductStatus.OUT_OF_STOCK;
+    product.stock  = stock;
+    product.status = stock === 0 ? ProductStatus.OUT_OF_STOCK : ProductStatus.PUBLISHED;
     return this.productsRepository.save(product);
   }
 

@@ -1,37 +1,41 @@
-import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
+// backend/src/orders/orders.controller.ts
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { OrdersService } from './orders.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminGuard }   from '../auth/guards/admin.guard';
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  // POST /orders — créer une commande
+  // ✅ PUBLIC — client crée une commande
   @Post()
   create(@Body() dto: any) {
     return this.ordersService.create(dto);
   }
 
-  // GET /orders — toutes les commandes (admin)
+  // ✅ ADMIN SEULEMENT — voir toutes les commandes
   @Get()
+  @UseGuards(JwtAuthGuard, AdminGuard)
   findAll() {
     return this.ordersService.findAll();
   }
 
-  // GET /orders/:id
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.ordersService.findOne(id);
-  }
-
-  // GET /orders/user/:email — commandes d'un client
-  @Get('user/:email')
-  findByUser(@Param('email') email: string) {
-    return this.ordersService.findByUser(email);
-  }
-
-  // PATCH /orders/:id/status — changer le statut
+  // ✅ ADMIN SEULEMENT — changer le statut d'une commande
   @Patch(':id/status')
+  @UseGuards(JwtAuthGuard, AdminGuard)
   updateStatus(@Param('id') id: string, @Body('status') status: string) {
     return this.ordersService.updateStatus(id, status);
+  }
+
+  // ✅ CLIENT — voir ses propres commandes uniquement
+  @Get('user/:email')
+  @UseGuards(JwtAuthGuard)
+  findByUser(@Param('email') email: string, @Request() req: any) {
+    // Sécurité : client voit seulement SES commandes, admin voit tout
+    if (req.user.role !== 'admin' && req.user.email !== email) {
+      return [];
+    }
+    return this.ordersService.findByEmail(email);
   }
 }

@@ -74,6 +74,6 @@ export class Product {
 subcategory: string | null; 
   
   @Column({ type: 'simple-array', nullable: true, default: '' })
-sizes: string[];   
+sizes: string | null;   
 
 }

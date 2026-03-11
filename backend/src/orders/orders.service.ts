@@ -5,6 +5,9 @@ import { Order } from './order.entity';
 
 @Injectable()
 export class OrdersService {
+  findByEmail(email: string) {
+      throw new Error('Method not implemented.');
+  }
   constructor(
     @InjectRepository(Order)
     private readonly orderRepo: Repository<Order>,

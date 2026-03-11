@@ -17,8 +17,8 @@ interface Product {
   images?: string[];
   stock: number;
   status?: string;
-  sizes?: string[];          // ✅ NOUVEAU
-  subcategory?: string;      // ✅ NOUVEAU
+  sizes?: string[];          
+  subcategory?: string;      
   category?: { name: string; slug: string };
   brand?: string;
   weight?: number;
@@ -78,28 +78,26 @@ export default function ProductDetailPage() {
   };
 
   // ── Add to cart ──────────────────────────────────────────────────────
-  const handleAddToCart = async () => {
-    if (!product) return;
-
-    // ✅ Bloque si clothing sans taille sélectionnée
-    const isClothing = (product.sizes?.length ?? 0) > 0;
-    if (isClothing && !selectedSize) {
-      setSizeError(true);
-      document.getElementById('size-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
-
-    setSizeError(false);
-    setCartStatus('loading');
-    try {
-      await addItem(product.id, quantity);
-      setCartStatus('success');
-      setTimeout(() => setCartStatus('idle'), 2500);
-    } catch {
-      setCartStatus('error');
-      setTimeout(() => setCartStatus('idle'), 2500);
-    }
-  };
+  
+    const handleAddToCart = async () => {
+  if (!product) return;
+  const isClothing = (product.sizes?.length ?? 0) > 0;
+  if (isClothing && !selectedSize) {
+    setSizeError(true);
+    return;
+  }
+  setSizeError(false);
+  setCartStatus('loading');
+  try {
+    await addItem(product.id, quantity);
+    setCartStatus('success');
+    setTimeout(() => setCartStatus('idle'), 2500);
+  } catch (e) {
+    console.error('addItem error:', e);
+    setCartStatus('error');
+    setTimeout(() => setCartStatus('idle'), 2500);
+  }
+};
 
   // ── LOADING ──────────────────────────────────────────────────────────
   if (loading) return (
@@ -223,10 +221,15 @@ export default function ProductDetailPage() {
           {/* Stock */}
           <p style={{
             fontSize: 12, letterSpacing: '0.1em', marginBottom: 20,
-            color: product.stock > 5 ? '#2e7d32' : product.stock > 0 ? '#e65100' : '#c0392b',
-          }}>
-            {product.stock > 5 ? '● En stock' : product.stock > 0 ? `● Plus que ${product.stock} en stock` : '● Rupture de stock'}
-          </p>
+            color: product.status === 'out_of_stock' ? '#c0392b' : product.stock > 5 ? '#2e7d32' : product.stock > 0 ? '#e65100' : '#c0392b',           }}>
+            {product.status === 'out_of_stock'
+          ? '● Rupture de stock'
+          :product.stock > 5
+          ? '● En stock'
+          : product.stock > 0
+           ? `● Plus que ${product.stock} en stock`
+          : '● Rupture de stock'}         
+         </p>
 
           {/* ✅ SÉLECTEUR DE TAILLE — uniquement pour Clothing */}
           {isClothing && (

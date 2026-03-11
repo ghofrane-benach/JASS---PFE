@@ -1,16 +1,16 @@
 import {
   Controller, Get, Post, Put, Patch, Delete,
-  Param, Body, Query, ParseUUIDPipe,
+  Param, Body, Query, ParseUUIDPipe, UseGuards,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductQueryDto } from './dto/product-query.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminGuard }   from '../auth/guards/admin.guard';
 
 @Controller('products')
 export class ProductController {
-  productsRepository: any;
-
   constructor(private readonly productsService: ProductsService) {}
 
   @Get()
@@ -28,7 +28,6 @@ export class ProductController {
     return this.productsService.getPopularProducts(limit);
   }
 
-  // FIX : seed AVANT :id sinon NestJS interprete "seed" comme un UUID
   @Get('seed')
   seed() {
     return this.productsService.seed();
@@ -58,16 +57,26 @@ export class ProductController {
   }
 
   @Patch(':id/publish')
+  @UseGuards(JwtAuthGuard, AdminGuard)
   publish(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.publish(id);
   }
 
   @Patch(':id/unpublish')
+  @UseGuards(JwtAuthGuard, AdminGuard)
   unpublish(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.unpublish(id);
   }
 
+  // ✅ Nouvelle route — marquer rupture de stock
+  @Patch(':id/out-of-stock')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  outOfStock(@Param('id', ParseUUIDPipe) id: string) {
+    return this.productsService.outOfStock(id);
+  }
+
   @Put(':id/stock')
+  @UseGuards(JwtAuthGuard, AdminGuard)
   updateStock(
     @Param('id', ParseUUIDPipe) id: string,
     @Body('quantity') quantity: number,
@@ -76,12 +85,8 @@ export class ProductController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, AdminGuard)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.remove(id);
   }
-  @Delete('admin/truncate')
-async truncate() {
-  await this.productsRepository.query('TRUNCATE TABLE products CASCADE');
-  return { message: 'Table vidée' };
-}
 }

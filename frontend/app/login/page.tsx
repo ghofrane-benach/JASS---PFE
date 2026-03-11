@@ -38,7 +38,8 @@ export default function LoginPage() {
         );
       }
 
-      const { token, user } = data;
+      const token = data.token ?? data.access_token;
+      const { user } = data;
 
       // Stocker le token + user en localStorage
       localStorage.setItem('token', token);
