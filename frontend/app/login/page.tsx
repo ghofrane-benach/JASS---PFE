@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/component/AuthProvider';
+import { signIn } from 'next-auth/react';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,17 +43,13 @@ export default function LoginPage() {
       const token = data.token ?? data.access_token;
       const { user } = data;
 
-      // Stocker le token + user en localStorage
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify({
         ...user,
         name: user.name ?? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
       }));
 
-      // Recharger le AuthContext
       reload();
-
-      // Redirection
       window.location.href = '/account';
 
     } catch (err) {
@@ -61,6 +59,11 @@ export default function LoginPage() {
     }
   }
 
+  async function handleGoogle() {
+    setGoogleLoading(true);
+    await signIn('google', { callbackUrl: '/account' });
+  }
+
   return (
     <div style={{
       minHeight: '100vh', display: 'flex',
@@ -68,6 +71,7 @@ export default function LoginPage() {
       background: '#fff',
     }}>
 
+      {/* ── IMAGE GAUCHE (inchangée) ── */}
       <div style={{
         flex: 1, display: 'none',
         backgroundImage: "url('/images/scarfs/violet.jpeg')",
@@ -83,6 +87,7 @@ export default function LoginPage() {
         </div>
       </div>
 
+      {/* ── FORMULAIRE DROITE ── */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 6vw' }}>
         <div style={{ width: '100%', maxWidth: 400 }}>
 
@@ -101,6 +106,44 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* ── BOUTON GOOGLE ── */}
+          <button
+            onClick={handleGoogle}
+            disabled={googleLoading}
+            style={{
+              width: '100%', padding: '13px 20px', marginBottom: 20,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+              background: '#fff', border: '1px solid #e0e0e0',
+              fontSize: 13, letterSpacing: '0.04em', color: '#333',
+              fontFamily: 'inherit', cursor: googleLoading ? 'wait' : 'pointer',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+              opacity: googleLoading ? 0.7 : 1, transition: 'all 0.2s',
+            }}
+            onMouseOver={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)')}
+            onMouseOut={e  => (e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)')}
+          >
+            {googleLoading ? (
+              <div style={{ width: 16, height: 16, border: '2px solid #ddd', borderTop: '2px solid #555', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 48 48">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                <path fill="none" d="M0 0h48v48H0z"/>
+              </svg>
+            )}
+            <span>{googleLoading ? 'Connexion…' : 'Continuer avec Google'}</span>
+          </button>
+
+          {/* ── SÉPARATEUR ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+            <div style={{ flex: 1, height: 1, background: '#f0f0f0' }} />
+            <span style={{ fontSize: 11, color: '#ccc', letterSpacing: '0.1em' }}>ou</span>
+            <div style={{ flex: 1, height: 1, background: '#f0f0f0' }} />
+          </div>
+
+          {/* ── FORMULAIRE EMAIL / PASSWORD (inchangé) ── */}
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <InputField id="email"    type="email"    value={email}    onChange={e => setEmail(e.target.value)}    placeholder="Adresse email"  required />
             <InputField id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mot de passe"   required />
@@ -138,6 +181,7 @@ export default function LoginPage() {
               Créer un compte
             </Link>
           </p>
+
         </div>
       </div>
 

@@ -73,7 +73,7 @@ export class Product {
   @Column({ type: 'varchar', length: 100, nullable: true })
 subcategory: string | null; 
   
-  @Column({ type: 'simple-array', nullable: true, default: '' })
-sizes: string | null;   
+  @Column({ type: 'simple-array', nullable: true })
+sizes: string [] | null;   
 
 }

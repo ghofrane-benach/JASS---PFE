@@ -70,7 +70,7 @@ export default function RegisterPage() {
       {/* ── LEFT PANEL — image déco ───────────────────── */}
       <div style={{
         flex: 1, display: 'none',
-        backgroundImage: "url('/images/scarfs/burgundy.jpeg')",
+        backgroundImage: "url('/images/scarfs/bley.jpeg')",
         backgroundSize: 'cover', backgroundPosition: 'center',
         position: 'relative',
       }} className="register-left">
