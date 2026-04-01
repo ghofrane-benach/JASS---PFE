@@ -1,0 +1,49 @@
+# ── Global ────────────────────────────────────────────────────────
+namespace: jass
+
+# ── ACR Registry ──────────────────────────────────────────────────
+registry: jassacr.azurecr.io
+
+# ── Frontend ──────────────────────────────────────────────────────
+frontend:
+  image: jassacr.azurecr.io/jass-frontend
+  tag: latest
+  replicas: 1
+  port: 3001
+  env:
+    NEXT_PUBLIC_API_URL: "http://backend:3000"
+
+# ── Backend ───────────────────────────────────────────────────────
+backend:
+  image: jassacr.azurecr.io/jass-backend
+  tag: latest
+  replicas: 1
+  port: 3000
+  env:
+    DB_HOST: "postgres"
+    DB_PORT: "5432"
+    DB_USERNAME: "postgres"
+    DB_PASSWORD: "pfe2026"
+    DB_NAME: "jass_ecommerce"
+    NODE_ENV: "production"
+    JWT_SECRET: "jass-secret-key-2025"
+    PORT: "3000"
+
+# ── PostgreSQL ────────────────────────────────────────────────────
+postgres:
+  image: postgres
+  tag: 15-alpine
+  replicas: 1
+  port: 5432
+  storage: 1Gi
+  env:
+    POSTGRES_USER: "postgres"
+    POSTGRES_PASSWORD: "pfe2026"
+    POSTGRES_DB: "jass_ecommerce"
+
+# ── Ingress ───────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  host: jass.local
+  annotations:
+    kubernetes.io/ingress.class: nginx

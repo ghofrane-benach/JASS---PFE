@@ -1,0 +1,141 @@
+pipeline {
+    agent any
+
+    environment {
+        // ── ACR ───────────────────────────────────────────────
+        ACR_NAME        = 'jassacr'
+        ACR_LOGIN_SERVER = 'jassacr.azurecr.io'
+        IMAGE_BACKEND   = "${ACR_LOGIN_SERVER}/jass-backend"
+        IMAGE_FRONTEND  = "${ACR_LOGIN_SERVER}/jass-frontend"
+        IMAGE_TAG       = "${BUILD_NUMBER}"
+
+        // ── AKS ───────────────────────────────────────────────
+        RESOURCE_GROUP  = 'jass-rg'
+        AKS_CLUSTER     = 'jass-aks-actif'
+        NAMESPACE       = 'jass'
+    }
+
+    stages {
+
+        // ── 1. CHECKOUT ──────────────────────────────────────
+        stage('Checkout') {
+            steps {
+                echo '📥 Récupération du code source...'
+                checkout scm
+            }
+        }
+
+        // ── 2. BUILD IMAGES ──────────────────────────────────
+        stage('Build Docker Images') {
+            parallel {
+                stage('Build Backend') {
+                    steps {
+                        echo '🔨 Build image backend...'
+                        sh "docker build -t ${IMAGE_BACKEND}:${IMAGE_TAG} -t ${IMAGE_BACKEND}:latest ./backend"
+                    }
+                }
+                stage('Build Frontend') {
+                    steps {
+                        echo '🔨 Build image frontend...'
+                        sh "docker build -t ${IMAGE_FRONTEND}:${IMAGE_TAG} -t ${IMAGE_FRONTEND}:latest ./frontend"
+                    }
+                }
+            }
+        }
+
+        // ── 3. PUSH VERS ACR ─────────────────────────────────
+        stage('Push to ACR') {
+            steps {
+                echo '📤 Push des images vers Azure Container Registry...'
+                withCredentials([usernamePassword(
+                    credentialsId: 'acr-credentials',
+                    usernameVariable: 'ACR_USER',
+                    passwordVariable: 'ACR_PASS'
+                )]) {
+                    sh """
+                        docker login ${ACR_LOGIN_SERVER} -u ${ACR_USER} -p ${ACR_PASS}
+                        docker push ${IMAGE_BACKEND}:${IMAGE_TAG}
+                        docker push ${IMAGE_BACKEND}:latest
+                        docker push ${IMAGE_FRONTEND}:${IMAGE_TAG}
+                        docker push ${IMAGE_FRONTEND}:latest
+                    """
+                }
+            }
+        }
+
+        // ── 4. DEPLOY SUR AKS (ACTIF) ────────────────────────
+        stage('Deploy to AKS (Actif)') {
+            steps {
+                echo '🚀 Déploiement sur le cluster AKS Actif...'
+                withCredentials([file(
+                    credentialsId: 'aks-kubeconfig',
+                    variable: 'KUBECONFIG'
+                )]) {
+                    sh """
+                        helm upgrade --install jass ./helm/jass-chart \
+                            --namespace ${NAMESPACE} \
+                            --create-namespace \
+                            --set backend.tag=${IMAGE_TAG} \
+                            --set frontend.tag=${IMAGE_TAG} \
+                            --wait \
+                            --timeout 5m
+                    """
+                }
+            }
+        }
+
+        // ── 5. DEPLOY SUR AKS (PASSIF) ───────────────────────
+        stage('Deploy to AKS (Passif)') {
+            steps {
+                echo '🔄 Déploiement sur le cluster AKS Passif...'
+                withCredentials([file(
+                    credentialsId: 'aks-kubeconfig-passif',
+                    variable: 'KUBECONFIG'
+                )]) {
+                    sh """
+                        helm upgrade --install jass ./helm/jass-chart \
+                            --namespace ${NAMESPACE} \
+                            --create-namespace \
+                            --set backend.tag=${IMAGE_TAG} \
+                            --set frontend.tag=${IMAGE_TAG} \
+                            --wait \
+                            --timeout 5m
+                    """
+                }
+            }
+        }
+
+        // ── 6. VÉRIFICATION ──────────────────────────────────
+        stage('Verify Deployment') {
+            steps {
+                echo '✅ Vérification du déploiement...'
+                withCredentials([file(
+                    credentialsId: 'aks-kubeconfig',
+                    variable: 'KUBECONFIG'
+                )]) {
+                    sh """
+                        kubectl get pods -n ${NAMESPACE}
+                        kubectl get services -n ${NAMESPACE}
+                    """
+                }
+            }
+        }
+    }
+
+    // ── POST ACTIONS ──────────────────────────────────────────
+    post {
+        success {
+            echo '✅ Pipeline réussi ! JASS déployé avec succès sur AKS.'
+        }
+        failure {
+            echo '❌ Pipeline échoué. Vérifiez les logs ci-dessus.'
+        }
+        always {
+            echo '🧹 Nettoyage des images Docker locales...'
+            sh """
+                docker rmi ${IMAGE_BACKEND}:${IMAGE_TAG} || true
+                docker rmi ${IMAGE_FRONTEND}:${IMAGE_TAG} || true
+            """
+        }
+    }
+}

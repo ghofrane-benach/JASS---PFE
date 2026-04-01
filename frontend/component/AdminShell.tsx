@@ -10,7 +10,6 @@ const NAV = [
   { href: '/admin/orders',    icon: '◎', label: 'Commandes'     },
   { href: '/admin/products',  icon: '◻', label: 'Produits'      },
   { href: '/admin/users',     icon: '◯', label: 'Utilisateurs'  },
-  { href: '/admin/reclamations', label: 'Réclamations', icon: '✉️' }
 ];
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -21,9 +20,13 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     if (!mounted) return;
+    if (pathname === '/admin/login') return;
     if (!isLoggedIn) { router.push('/admin/login'); return; }
     if ((user as any)?.role !== 'admin') { router.push('/'); return; }
-  }, [mounted, isLoggedIn, user]);
+  }, [mounted, isLoggedIn, user, pathname]);
+
+  // Sur /admin/login — afficher sans sidebar
+  if (pathname === '/admin/login') return <>{children}</>;
 
   if (!mounted || !isLoggedIn) return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

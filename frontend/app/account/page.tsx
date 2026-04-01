@@ -80,7 +80,7 @@ export default function AccountPage() {
 
   const TABS = [
     { key: 'profile',  label: 'Mon profil',    icon: '👤' },
-    { key: 'orders',   label: 'Mes commandes',link : '/account/orders', icon: '📦' },
+    { key: 'orders',   label: 'Mes commandes' , icon: '📦' },
     { key: 'settings', label: 'Paramètres',     icon: '⚙️' },
   ] as const;
 

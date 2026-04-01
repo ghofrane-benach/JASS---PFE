@@ -329,7 +329,7 @@ export default function Header() {
                         </div>
                         {[
                           { label: 'Mon Compte',    href: '/account'        },
-                          { label: 'Mes Commandes', href: '/account/orders' },
+                          { label: 'Mes Commandes', href: '/orders' },
                         ].map(link => (
                           <Link key={link.href} href={link.href} onClick={() => setAccountOpen(false)}
                             style={{ display: 'block', padding: '11px 18px', fontSize: 13, letterSpacing: '0.04em', color: '#444', textDecoration: 'none', borderBottom: '1px solid #f9f9f9', transition: 'background 0.15s' }}

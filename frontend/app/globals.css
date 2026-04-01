@@ -1,16 +1,20 @@
 /* apps/frontend/app/globals.css */
 
-
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap');
-@import "tailwindcss";
 
-@theme {
-  /* Couleurs principales */
+/* ✅ Tailwind v3 directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ════════════════════════════════════════
+   CSS VARIABLES (remplace @theme de v4)
+════════════════════════════════════════ */
+:root {
   --color-jass-black:   #080808;
   --color-jass-white:   #ffffff;
   --color-jass-gray:    #f9f9f9;
 
-  /* Nude / Terre */
   --color-nude-50:  #FFF8F0;
   --color-nude-100: #FFF0E6;
   --color-nude-200: #FFE5CC;
@@ -18,15 +22,10 @@
   --color-nude-400: #FFCC99;
   --color-nude-500: #FFB366;
 
-  /* Gold */
-  --color-gold:   #D4AF37;
-  --color-beige:  #F5F5DC;
+  --color-gold:  #D4AF37;
+  --color-beige: #F5F5DC;
 
-  /* Police */
   --font-serif: "Cormorant Garamond", Georgia, serif;
-
-  /* Spacing custom */
-  --spacing-section: 6vw;
 }
 
 /* ════════════════════════════════════════
@@ -50,7 +49,6 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Scrollbar custom */
   ::-webkit-scrollbar       { width: 8px; }
   ::-webkit-scrollbar-track { background: #f5f5f5; }
   ::-webkit-scrollbar-thumb { background: #525252; border-radius: 4px; }
@@ -62,31 +60,26 @@
 ════════════════════════════════════════ */
 @layer components {
 
-  /* Boutons */
   .btn-primary {
-    @apply inline-block px-11 py-4 bg-[#111] text-white text-[11px] tracking-[0.25em] uppercase font-serif cursor-pointer border border-[#111] transition-all duration-300 hover:bg-[#333];
+    @apply inline-block px-11 py-4 bg-[#111] text-white text-[11px] tracking-[0.25em] uppercase cursor-pointer border border-[#111] transition-all duration-300 hover:bg-[#333];
   }
 
   .btn-outline {
-    @apply inline-block px-11 py-4 bg-transparent text-[#111] text-[11px] tracking-[0.25em] uppercase font-serif cursor-pointer border border-[#111] transition-all duration-300 hover:bg-[#111] hover:text-white;
+    @apply inline-block px-11 py-4 bg-transparent text-[#111] text-[11px] tracking-[0.25em] uppercase cursor-pointer border border-[#111] transition-all duration-300 hover:bg-[#111] hover:text-white;
   }
 
-  /* Inputs */
   .input-luxury {
-    @apply w-full px-4 py-3.5 border border-[#e8e8e8] bg-[#fafafa] outline-none font-serif text-sm text-[#333] transition-all duration-200 focus:border-[#111];
+    @apply w-full px-4 py-3.5 border border-[#e8e8e8] bg-[#fafafa] outline-none text-sm text-[#333] transition-all duration-200 focus:border-[#111];
   }
 
-  /* Labels */
   .label-luxury {
     @apply block text-[10px] tracking-[0.3em] uppercase text-[#aaa] mb-2.5;
   }
 
-  /* Section container */
   .section-container {
     @apply max-w-[1300px] mx-auto px-[6vw];
   }
 
-  /* Page hero */
   .page-hero {
     @apply bg-[#080808] text-white py-28 px-[6vw] text-center relative overflow-hidden;
   }
@@ -99,12 +92,10 @@
     @apply text-[clamp(2.4rem,6vw,5rem)] font-light leading-[1.05] tracking-[-0.02em] mb-0;
   }
 
-  /* Cards */
   .card-luxury {
     @apply bg-white border border-[#f0f0f0] transition-all duration-300 hover:border-[#111];
   }
 
-  /* Texte catégorie */
   .text-category {
     @apply text-[9px] tracking-[0.3em] uppercase text-[#bbb] mb-1.5;
   }
@@ -130,8 +121,8 @@
     to   { opacity: 1; transform: translateY(0)   translateX(-50%); }
   }
 
-  .animate-spin-luxury  { animation: spin      0.8s linear infinite; }
-  .animate-fade-up      { animation: fadeUp    0.4s ease forwards; }
-  .animate-kenburns     { animation: kenburns  7s ease-out forwards; }
-  .animate-drop-in      { animation: dropIn    0.2s ease forwards; }
+  .animate-spin-luxury { animation: spin     0.8s linear infinite; }
+  .animate-fade-up     { animation: fadeUp   0.4s ease forwards; }
+  .animate-kenburns    { animation: kenburns 7s   ease-out forwards; }
+  .animate-drop-in     { animation: dropIn   0.2s ease forwards; }
 }

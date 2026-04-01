@@ -1,8 +1,6 @@
-import type { NextConfig } from 'next';
-import path from 'path';
-
-const nextConfig: NextConfig = {
-  reactStrictMode: true,
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'standalone',
 
   images: {
     remotePatterns: [
@@ -12,10 +10,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-  },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
