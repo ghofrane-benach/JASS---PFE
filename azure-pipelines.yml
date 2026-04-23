@@ -1,0 +1,167 @@
+trigger:
+  branches:
+    include:
+      - main
+
+variables:
+  acrName: 'jassacr'
+  acrLoginServer: 'jassacr.azurecr.io'
+  backendImage: 'jassacr.azurecr.io/jass-backend'
+  frontendImage: 'jassacr.azurecr.io/jass-frontend'
+  k8sNamespace: 'jass'
+
+stages:
+
+  # ── Stage 1 : Build ───────────────────────────────────────────────────────
+  - stage: Build
+    displayName: 'Build Docker Images'
+    jobs:
+      - job: BuildImages
+        displayName: 'Build Frontend & Backend'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: Docker@2
+            displayName: 'Build Backend Image'
+            inputs:
+              command: build
+              dockerfile: 'backend/Dockerfile'
+              buildContext: 'backend'
+              repository: '$(backendImage)'
+              tags: '$(Build.BuildId)'
+
+          - task: Docker@2
+            displayName: 'Build Frontend Image'
+            inputs:
+              command: build
+              dockerfile: 'frontend/Dockerfile'
+              buildContext: 'frontend'
+              repository: '$(frontendImage)'
+              tags: '$(Build.BuildId)'
+
+  # ── Stage 2 : Test & Sécurité ─────────────────────────────────────────────
+  - stage: Test
+    displayName: 'Test & Security Scan'
+    dependsOn: Build
+    jobs:
+      - job: SecurityScan
+        displayName: 'Trivy Security Scan'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: |
+              curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+              trivy image --exit-code 0 --severity HIGH,CRITICAL $(backendImage):$(Build.BuildId) || true
+              trivy image --exit-code 0 --severity HIGH,CRITICAL $(frontendImage):$(Build.BuildId) || true
+            displayName: 'Scan images avec Trivy'
+
+      - job: CodeQuality
+        displayName: 'SonarQube Analysis'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: SonarQubePrepare@5
+            displayName: 'Préparer analyse SonarQube'
+            inputs:
+              SonarQube: 'sonarqube-connection'
+              scannerMode: 'CLI'
+              configMode: 'manual'
+              cliProjectKey: 'jass-ecommerce'
+              cliProjectName: 'JASS E-Commerce'
+            continueOnError: true
+
+  # ── Stage 3 : Push ACR ────────────────────────────────────────────────────
+  - stage: Push
+    displayName: 'Push to ACR'
+    dependsOn: Test
+    jobs:
+      - job: PushImages
+        displayName: 'Push Images to Azure Container Registry'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: Docker@2
+            displayName: 'Login to ACR'
+            inputs:
+              command: login
+              containerRegistry: 'acr-service-connection'
+
+          - task: Docker@2
+            displayName: 'Push Backend Image'
+            inputs:
+              command: push
+              repository: '$(backendImage)'
+              tags: |
+                $(Build.BuildId)
+                latest
+
+          - task: Docker@2
+            displayName: 'Push Frontend Image'
+            inputs:
+              command: push
+              repository: '$(frontendImage)'
+              tags: |
+                $(Build.BuildId)
+                latest
+
+  # ── Stage 4 : Deploy AKS Actif ────────────────────────────────────────────
+  - stage: DeployActif
+    displayName: 'Deploy to AKS Actif'
+    dependsOn: Push
+    jobs:
+      - deployment: DeployActif
+        displayName: 'Helm Deploy AKS Actif'
+        pool:
+          vmImage: 'ubuntu-latest'
+        environment: 'production-actif'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: HelmDeploy@0
+                  displayName: 'Helm upgrade JASS Actif'
+                  inputs:
+                    connectionType: 'Azure Resource Manager'
+                    azureSubscription: 'azure-service-connection'
+                    azureResourceGroup: 'jass-rg'
+                    kubernetesCluster: 'jass-aks-actif'
+                    namespace: '$(k8sNamespace)'
+                    command: upgrade
+                    chartType: FilePath
+                    chartPath: 'helm/jass-chart'
+                    releaseName: 'jass'
+                    overrideValues: |
+                      image.registry=$(acrLoginServer)
+                      image.tag=$(Build.BuildId)
+                    waitForExecution: true
+
+  # ── Stage 5 : Deploy AKS Passif ───────────────────────────────────────────
+  - stage: DeployPassif
+    displayName: 'Deploy to AKS Passif'
+    dependsOn: DeployActif
+    jobs:
+      - deployment: DeployPassif
+        displayName: 'Helm Deploy AKS Passif'
+        pool:
+          vmImage: 'ubuntu-latest'
+        environment: 'production-passif'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: HelmDeploy@0
+                  displayName: 'Helm upgrade JASS Passif'
+                  inputs:
+                    connectionType: 'Azure Resource Manager'
+                    azureSubscription: 'azure-service-connection'
+                    azureResourceGroup: 'jass-rg'
+                    kubernetesCluster: 'jass-aks-pass'
+                    namespace: '$(k8sNamespace)'
+                    command: upgrade
+                    chartType: FilePath
+                    chartPath: 'helm/jass-chart'
+                    releaseName: 'jass'
+                    overrideValues: |
+                      image.registry=$(acrLoginServer)
+                      image.tag=$(Build.BuildId)
+                    waitForExecution: true
