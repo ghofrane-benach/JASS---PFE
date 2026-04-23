@@ -1,0 +1,16 @@
+FROM mcr.microsoft.com/azure-cli:latest
+
+# Installer les outils de base + kubectl + helm
+RUN tdnf install -y wget unzip python3-pip tar && \
+    wget -q https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl -O /usr/local/bin/kubectl && \
+    chmod +x /usr/local/bin/kubectl && \
+    wget -q https://get.helm.sh/helm-v3.17.0-linux-amd64.tar.gz -O /tmp/helm.tar.gz && \
+    tar -xzf /tmp/helm.tar.gz -C /tmp/ && \
+    mv /tmp/linux-amd64/helm /usr/local/bin/helm && \
+    rm -rf /tmp/helm.tar.gz /tmp/linux-amd64
+
+# Installer Ansible
+RUN python3 -m pip install --no-cache-dir ansible
+
+# Vérifier les installations
+RUN kubectl version --client && helm version && ansible --version

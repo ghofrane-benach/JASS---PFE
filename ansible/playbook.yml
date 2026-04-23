@@ -1,0 +1,124 @@
+---
+# ── Ansible Playbook JASS ─────────────────────────────────────────────────────
+# Configure les outils nécessaires après que Terraform a créé l'infrastructure
+# Exécuté via Docker : docker run --rm jass-ansible ansible-playbook ansible/playbook.yml
+
+- name: Configure JASS DevOps Environment
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    helm_version: "v3.17.0"
+    kubectl_version: "v1.30.0"
+    resource_group: "jass-rg"
+    acr_name: "jassacr"
+    aks_actif: "jass-aks-actif"
+    aks_passif: "jass-aks-pass"   # ✅ nom réel Azure
+
+  tasks:
+
+    # ── 1. Vérifier Azure CLI ──────────────────────────────────────────────
+    - name: Vérifier que Azure CLI est disponible
+      command: az version
+      register: az_version
+      changed_when: false
+
+    - name: Afficher la version Azure CLI
+      debug:
+        msg: "Azure CLI disponible ✅"
+
+    # ── 2. Récupérer les kubeconfigs AKS ──────────────────────────────────
+    - name: Récupérer kubeconfig cluster AKS Actif
+      command: >
+        az aks get-credentials
+        --resource-group {{ resource_group }}
+        --name {{ aks_actif }}
+        --file /tmp/kubeconfig-actif.yaml
+        --overwrite-existing
+      changed_when: true
+
+    - name: Récupérer kubeconfig cluster AKS Passif
+      command: >
+        az aks get-credentials
+        --resource-group {{ resource_group }}
+        --name {{ aks_passif }}
+        --file /tmp/kubeconfig-passif.yaml
+        --overwrite-existing
+      changed_when: true
+
+    # ── 3. Vérifier les clusters AKS ──────────────────────────────────────
+    - name: Vérifier les nodes du cluster Actif
+      command: kubectl --kubeconfig /tmp/kubeconfig-actif.yaml get nodes
+      register: nodes_actif
+      changed_when: false
+
+    - name: Afficher les nodes Actif
+      debug:
+        msg: "{{ nodes_actif.stdout_lines }}"
+
+    - name: Vérifier les nodes du cluster Passif
+      command: kubectl --kubeconfig /tmp/kubeconfig-passif.yaml get nodes
+      register: nodes_passif
+      changed_when: false
+
+    - name: Afficher les nodes Passif
+      debug:
+        msg: "{{ nodes_passif.stdout_lines }}"
+
+    # ── 4. Créer le namespace JASS sur les deux clusters ──────────────────
+    # ✅ FIX : commande directe sans pipe, ignore "already exists"
+    - name: Créer namespace jass sur cluster Actif
+      command: kubectl --kubeconfig /tmp/kubeconfig-actif.yaml create namespace jass
+      register: ns_actif
+      failed_when: ns_actif.rc != 0 and 'already exists' not in ns_actif.stderr
+      changed_when: ns_actif.rc == 0
+
+    - name: Créer namespace jass sur cluster Passif
+      command: kubectl --kubeconfig /tmp/kubeconfig-passif.yaml create namespace jass
+      register: ns_passif
+      failed_when: ns_passif.rc != 0 and 'already exists' not in ns_passif.stderr
+      changed_when: ns_passif.rc == 0
+
+    # ── 5. Déployer avec Helm sur cluster Actif ───────────────────────────
+    - name: Déployer JASS sur cluster Actif avec Helm
+      command: >
+        helm --kubeconfig /tmp/kubeconfig-actif.yaml
+        upgrade --install jass /workspace/helm/jass-chart
+        --namespace jass
+        --set image.registry={{ acr_name }}.azurecr.io
+        --wait --timeout 10m
+      changed_when: true
+
+    # ── 6. Déployer avec Helm sur cluster Passif ──────────────────────────
+    - name: Déployer JASS sur cluster Passif avec Helm
+      command: >
+        helm --kubeconfig /tmp/kubeconfig-passif.yaml
+        upgrade --install jass /workspace/helm/jass-chart
+        --namespace jass
+        --set image.registry={{ acr_name }}.azurecr.io
+        --wait --timeout 10m
+      changed_when: true
+
+    # ── 7. Vérifier les pods déployés ─────────────────────────────────────
+    - name: Vérifier pods sur cluster Actif
+      command: kubectl --kubeconfig /tmp/kubeconfig-actif.yaml get pods -n jass
+      register: pods_actif
+      changed_when: false
+
+    - name: Afficher pods Actif
+      debug:
+        msg: "{{ pods_actif.stdout_lines }}"
+
+    - name: Vérifier pods sur cluster Passif
+      command: kubectl --kubeconfig /tmp/kubeconfig-passif.yaml get pods -n jass
+      register: pods_passif
+      changed_when: false
+
+    - name: Afficher pods Passif
+      debug:
+        msg: "{{ pods_passif.stdout_lines }}"
+
+    - name: Déploiement terminé
+      debug:
+        msg: "✅ JASS déployé sur les deux clusters AKS !"
