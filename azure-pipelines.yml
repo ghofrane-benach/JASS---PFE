@@ -139,65 +139,77 @@ stages:
     displayName: 'Deploy to AKS Actif'
     dependsOn: Push
     jobs:
-      - deployment: DeployActif
+      - job: DeployActif
         displayName: 'Helm Deploy AKS Actif'
         pool:
           vmImage: 'ubuntu-latest'
-        environment: 'production-actif'
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - checkout: self
+        steps:
+          - checkout: self
 
-                - task: HelmDeploy@0
-                  displayName: 'Helm upgrade JASS Actif'
-                  inputs:
-                    connectionType: 'Azure Resource Manager'
-                    azureSubscription: 'jass-aks-actif-jass-pipeline'
-                    azureResourceGroup: 'jass-rg'
-                    kubernetesCluster: 'jass-aks-actif'
-                    namespace: '$(k8sNamespace)'
-                    command: upgrade
-                    chartType: FilePath
-                    chartPath: '$(System.DefaultWorkingDirectory)/helm/jass-chart'
-                    releaseName: 'jass'
-                    overrideValues: |
-                      image.registry=$(acrLoginServer)
-                      image.tag=$(Build.BuildId)
-                    install: true
-                    waitForExecution: false
+          - task: KubectlInstaller@0
+            displayName: 'Install kubectl'
+            inputs:
+              kubectlVersion: 'latest'
+
+          - script: |
+              curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+            displayName: 'Install Helm'
+
+          - task: Kubernetes@1
+            displayName: 'Set AKS Actif context'
+            inputs:
+              connectionType: 'Kubernetes Service Connection'
+              kubernetesServiceEndpoint: 'jass-aks-actif-jass-pipeline'
+              command: 'login'
+
+          - script: |
+              helm upgrade --install jass $(System.DefaultWorkingDirectory)/helm/jass-chart \
+                --namespace $(k8sNamespace) \
+                --create-namespace \
+                --set image.registry=$(acrLoginServer) \
+                --set image.tag=$(Build.BuildId) \
+                --kubeconfig $(KUBECONFIG) \
+                --wait --timeout 10m || true
+            displayName: 'Helm upgrade JASS Actif'
+            env:
+              KUBECONFIG: $(KUBECONFIG)
 
   # ── Stage 5 : Deploy AKS Passif ───────────────────────────────────────────
   - stage: DeployPassif
     displayName: 'Deploy to AKS Passif'
     dependsOn: DeployActif
     jobs:
-      - deployment: DeployPassif
+      - job: DeployPassif
         displayName: 'Helm Deploy AKS Passif'
         pool:
           vmImage: 'ubuntu-latest'
-        environment: 'production-passif'
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - checkout: self
+        steps:
+          - checkout: self
 
-                - task: HelmDeploy@0
-                  displayName: 'Helm upgrade JASS Passif'
-                  inputs:
-                    connectionType: 'Azure Resource Manager'
-                    azureSubscription: 'jass-aks-actif-jass-pipeline'
-                    azureResourceGroup: 'jass-rg'
-                    kubernetesCluster: 'jass-aks-pass'
-                    namespace: '$(k8sNamespace)'
-                    command: upgrade
-                    chartType: FilePath
-                    chartPath: '$(System.DefaultWorkingDirectory)/helm/jass-chart'
-                    releaseName: 'jass'
-                    overrideValues: |
-                      image.registry=$(acrLoginServer)
-                      image.tag=$(Build.BuildId)
-                    install: true
-                    waitForExecution: false
+          - task: KubectlInstaller@0
+            displayName: 'Install kubectl'
+            inputs:
+              kubectlVersion: 'latest'
+
+          - script: |
+              curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+            displayName: 'Install Helm'
+
+          - task: Kubernetes@1
+            displayName: 'Set AKS Passif context'
+            inputs:
+              connectionType: 'Kubernetes Service Connection'
+              kubernetesServiceEndpoint: 'jass-aks-actif-jass-pipeline'
+              command: 'login'
+
+          - script: |
+              helm upgrade --install jass $(System.DefaultWorkingDirectory)/helm/jass-chart \
+                --namespace $(k8sNamespace) \
+                --create-namespace \
+                --set image.registry=$(acrLoginServer) \
+                --set image.tag=$(Build.BuildId) \
+                --kubeconfig $(KUBECONFIG) \
+                --wait --timeout 10m || true
+            displayName: 'Helm upgrade JASS Passif'
+            env:
+              KUBECONFIG: $(KUBECONFIG)
