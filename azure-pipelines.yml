@@ -25,7 +25,7 @@ stages:
             displayName: 'Login to ACR'
             inputs:
               command: login
-              containerRegistry: 'jassacr'
+              containerRegistry: 'acr-service-connection'
 
           - task: Docker@2
             displayName: 'Build Backend Image'
@@ -34,7 +34,7 @@ stages:
               dockerfile: 'backend/Dockerfile'
               buildContext: 'backend'
               repository: '$(backendImage)'
-              containerRegistry: 'jassacr'
+              containerRegistry: 'acr-service-connection'
               tags: |
                 $(Build.BuildId)
                 latest
@@ -46,7 +46,7 @@ stages:
               dockerfile: 'frontend/Dockerfile'
               buildContext: 'frontend'
               repository: '$(frontendImage)'
-              containerRegistry: 'jassacr'
+              containerRegistry: 'acr-service-connection'
               tags: |
                 $(Build.BuildId)
                 latest
@@ -90,7 +90,7 @@ stages:
             displayName: 'Login to ACR'
             inputs:
               command: login
-              containerRegistry: 'jassacr'
+              containerRegistry: 'acr-service-connection'
 
           - script: |
               curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
@@ -117,7 +117,7 @@ stages:
               dockerfile: 'backend/Dockerfile'
               buildContext: 'backend'
               repository: '$(backendImage)'
-              containerRegistry: 'jassacr'
+              containerRegistry: 'acr-service-connection'
               tags: |
                 $(Build.BuildId)
                 latest
@@ -129,7 +129,7 @@ stages:
               dockerfile: 'frontend/Dockerfile'
               buildContext: 'frontend'
               repository: '$(frontendImage)'
-              containerRegistry: 'jassacr'
+              containerRegistry: 'acr-service-connection'
               tags: |
                 $(Build.BuildId)
                 latest
