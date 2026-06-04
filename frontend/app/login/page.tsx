@@ -153,9 +153,9 @@ export default function LoginPage() {
                 <input type="checkbox" style={{ accentColor: '#111' }} />
                 Se souvenir de moi
               </label>
-              <a href="#" style={{ fontSize: 12, color: '#888', textDecoration: 'none', borderBottom: '1px solid #ddd' }}>
-                Mot de passe oublié ?
-              </a>
+                <Link href="/forgot-password" style={{ fontSize: 12, color: '#888', textDecoration: 'none', borderBottom: '1px solid #ddd' }}>
+                  Mot de passe oublié ?
+                </Link>
             </div>
 
             <button type="submit" disabled={loading} style={{

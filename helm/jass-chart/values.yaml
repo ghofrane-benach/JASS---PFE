@@ -1,10 +1,6 @@
-# ── Global ────────────────────────────────────────────────────────
 namespace: jass
-
-# ── ACR Registry ──────────────────────────────────────────────────
 registry: jassacr.azurecr.io
 
-# ── Frontend ──────────────────────────────────────────────────────
 frontend:
   image: jassacr.azurecr.io/jass-frontend
   tag: latest
@@ -13,7 +9,6 @@ frontend:
   env:
     NEXT_PUBLIC_API_URL: "http://backend:3000"
 
-# ── Backend ───────────────────────────────────────────────────────
 backend:
   image: jassacr.azurecr.io/jass-backend
   tag: latest
@@ -28,8 +23,11 @@ backend:
     NODE_ENV: "production"
     JWT_SECRET: "jass-secret-key-2025"
     PORT: "3000"
+    REDIS_HOST: "redis"       
+    REDIS_PORT: "6379"        
+    AZURE_COMMUNICATION_CONNECTION_STRING: "endpoint=https://jass-communication.europe.communication.azure.com/;accesskey=Kj5G7LxbpYxouR5A03wkHwggVpong16LAsv37XoM1mCVO9bUAZgfJQQJ99CDACULyCpfiLRiAAAAAZCSjeVH"
+    AZURE_EMAIL_SENDER: "donotreply@e5f3ec40-76a1-4255-b6e7-8f354fb39cbb.azurecomm.net"
 
-# ── PostgreSQL ────────────────────────────────────────────────────
 postgres:
   image: postgres
   tag: 15-alpine
@@ -41,7 +39,12 @@ postgres:
     POSTGRES_PASSWORD: "pfe2026"
     POSTGRES_DB: "jass_ecommerce"
 
-# ── Ingress ───────────────────────────────────────────────────────
+redis:
+  image: redis
+  tag: 7-alpine
+  replicas: 1
+  port: 6379
+
 ingress:
   enabled: true
   host: jass.local

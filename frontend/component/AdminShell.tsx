@@ -3,32 +3,51 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/component/AuthProvider';
 
 const NAV = [
   { href: '/admin/dashboard', icon: '◈', label: 'Dashboard'     },
   { href: '/admin/orders',    icon: '◎', label: 'Commandes'     },
   { href: '/admin/products',  icon: '◻', label: 'Produits'      },
   { href: '/admin/users',     icon: '◯', label: 'Utilisateurs'  },
+  { href: '/admin/audit', icon: '◉', label: 'Journal Audit' },
+
 ];
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
-  const { user, isLoggedIn, mounted, logout } = useAuth();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed,    setCollapsed]    = useState(false);
+  const [adminMounted, setAdminMounted] = useState(false);
+  const [adminUser,    setAdminUser]    = useState<any>(null);
 
   useEffect(() => {
-    if (!mounted) return;
-    if (pathname === '/admin/login') return;
-    if (!isLoggedIn) { router.push('/admin/login'); return; }
-    if ((user as any)?.role !== 'admin') { router.push('/'); return; }
-  }, [mounted, isLoggedIn, user, pathname]);
+    // Sur la page login → pas de vérification
+    if (pathname === '/admin/login') {
+      setAdminMounted(true);
+      return;
+    }
+
+    const adminToken = localStorage.getItem('admin_token');
+    const user       = JSON.parse(localStorage.getItem('admin_user') ?? 'null');
+
+    setAdminUser(user);
+    setAdminMounted(true);
+
+    if (!adminToken || !user) { router.push('/admin/login'); return; }
+if ((user as any)?.role !== 'admin') { router.push('/admin/login'); return; }
+  }, [pathname]);
+
+  function handleLogout() {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
+    window.location.href = '/admin/login';
+  }
 
   // Sur /admin/login — afficher sans sidebar
   if (pathname === '/admin/login') return <>{children}</>;
 
-  if (!mounted || !isLoggedIn) return (
+  // Loading
+  if (!adminMounted) return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 32, height: 32, border: '1px solid rgba(255,255,255,0.2)', borderTop: '1px solid #fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -92,7 +111,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <div style={{ padding: collapsed ? '16px 0' : '16px 24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           {!collapsed && (
             <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', margin: '0 0 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {user?.email}
+              {adminUser?.email}
             </p>
           )}
           <div style={{ display: 'flex', gap: 12, justifyContent: collapsed ? 'center' : 'flex-start' }}>
@@ -103,7 +122,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               {collapsed ? '⌂' : '← Site'}
             </Link>
             {!collapsed && (
-              <button onClick={logout}
+              <button onClick={handleLogout}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: 0, fontFamily: 'inherit', transition: 'color 0.2s' }}
                 onMouseOver={e => (e.currentTarget.style.color = '#e55')}
                 onMouseOut={e  => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}>

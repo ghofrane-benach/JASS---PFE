@@ -3,10 +3,15 @@ import { Controller, Get, Post, Patch, Body, Param, UseGuards, Request } from '@
 import { OrdersService } from './orders.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard }   from '../auth/guards/admin.guard';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction }  from '../audit/audit-log.entity';
 
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly auditService:  AuditService,  // ✅ injection audit
+  ) {}
 
   // PUBLIC — client crée une commande
   @Post()
@@ -21,18 +26,33 @@ export class OrdersController {
     return this.ordersService.findAll();
   }
 
-  //  ADMIN SEULEMENT — changer le statut d'une commande
+  // ADMIN SEULEMENT — changer le statut d'une commande ✅ AUDIT
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard, AdminGuard)
-  updateStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.ordersService.updateStatus(id, status);
+  async updateStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @Request() req: any,
+  ) {
+    const result = await this.ordersService.updateStatus(id, status);
+
+    // ✅ Enregistrer dans le journal d'audit
+    await this.auditService.log({
+      adminId:    req.user?.id,
+      adminEmail: req.user?.email,
+      action:     AuditAction.ORDER_STATUS_CHANGED,
+      targetId:   id,
+      targetType: 'order',
+      details:    { newStatus: status, orderId: id },
+    });
+
+    return result;
   }
 
   // CLIENT — voir ses propres commandes uniquement
   @Get('user/:email')
   @UseGuards(JwtAuthGuard)
   findByUser(@Param('email') email: string, @Request() req: any) {
-    // Sécurité : client voit seulement SES commandes, admin voit tout
     if (req.user.role !== 'admin' && req.user.email !== email) {
       return [];
     }

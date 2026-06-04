@@ -31,7 +31,14 @@ export class User {
   phone: string;
 
   @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
-  role: UserRole;                // ✅ CORRIGÉ — dans la classe + décorateur correct
+  role: UserRole;
+
+  // ✅ NOUVEAU — Réinitialisation mot de passe
+  @Column({ nullable: true, type: 'varchar' })
+  resetToken: string | null;
+
+  @Column({ nullable: true, type: 'timestamp' })
+  resetTokenExpiry: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

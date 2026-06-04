@@ -1,10 +1,9 @@
-## ── NAMESPACE ────────────────────────────────────────────────────
 apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ .Values.namespace }}
+
 ---
-## ── FRONTEND DEPLOYMENT ──────────────────────────────────────────
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -39,6 +38,7 @@ spec:
               port: {{ .Values.frontend.port }}
             initialDelaySeconds: 20
             periodSeconds: 10
+
 ---
 ## ── BACKEND DEPLOYMENT ───────────────────────────────────────────
 apiVersion: apps/v1
@@ -56,11 +56,13 @@ spec:
       labels:
         app: backend
     spec:
-      # ✅ Attendre que postgres soit prêt avant de démarrer
       initContainers:
         - name: wait-for-postgres
           image: busybox
           command: ['sh', '-c', 'until nc -z postgres 5432; do echo waiting for postgres; sleep 3; done']
+        - name: wait-for-redis       
+          image: busybox
+          command: ['sh', '-c', 'until nc -z redis 6379; do echo waiting for redis; sleep 3; done']
       containers:
         - name: backend
           image: "{{ .Values.backend.image }}:{{ .Values.backend.tag }}"
@@ -84,12 +86,21 @@ spec:
               value: {{ .Values.backend.env.JWT_SECRET }}
             - name: PORT
               value: "{{ .Values.backend.env.PORT }}"
+            - name: REDIS_HOST       
+              value: {{ .Values.backend.env.REDIS_HOST }}
+            - name: REDIS_PORT        
+              value: "{{ .Values.backend.env.REDIS_PORT }}"
+            - name: AZURE_COMMUNICATION_CONNECTION_STRING
+              value: {{ .Values.backend.env.AZURE_COMMUNICATION_CONNECTION_STRING }}
+            - name: AZURE_EMAIL_SENDER
+              value: {{ .Values.backend.env.AZURE_EMAIL_SENDER }}
           readinessProbe:
             httpGet:
               path: /products
               port: {{ .Values.backend.port }}
             initialDelaySeconds: 15
             periodSeconds: 10
+
 ---
 ## ── POSTGRES DEPLOYMENT ──────────────────────────────────────────
 apiVersion: apps/v1
@@ -133,3 +144,29 @@ spec:
         - name: postgres-storage
           persistentVolumeClaim:
             claimName: postgres-pvc
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.redis.replicas }}
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image }}:{{ .Values.redis.tag }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: {{ .Values.redis.port }}
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5

@@ -17,6 +17,15 @@ class RegisterDto {
   phone?: string;
 }
 
+class ForgotPasswordDto {
+  email: string;
+}
+
+class ResetPasswordDto {
+  token: string;
+  password: string;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -25,7 +34,6 @@ export class AuthController {
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   register(@Body() dto: RegisterDto) {
-    // ✅ CORRIGÉ — passe les bons paramètres au service
     const name = `${dto.firstName} ${dto.lastName}`.trim();
     return this.authService.register(name, dto.email, dto.password);
   }
@@ -35,5 +43,19 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
+  }
+
+  // POST /auth/forgot-password ✅ DANS la classe
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.requestPasswordReset(dto.email);
+  }
+
+  // POST /auth/reset-password ✅ DANS la classe
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.token, dto.password);
   }
 }
