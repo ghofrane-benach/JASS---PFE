@@ -158,7 +158,7 @@ stages:
           - task: AzureCLI@2
             displayName: 'Get AKS credentials & Helm deploy Actif'
             inputs:
-              azureSubscription: 'jass-aks-actif-jass'
+              azureSubscription: 'jass-devops-sp'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
@@ -194,7 +194,7 @@ stages:
           - task: AzureCLI@2
             displayName: 'Get AKS credentials & Helm deploy Passif'
             inputs:
-              azureSubscription: 'jass-aks-actif-jass'
+              azureSubscription: 'jass-devops-sp'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
