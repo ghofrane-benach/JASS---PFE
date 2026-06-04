@@ -154,7 +154,7 @@ stages:
                   displayName: 'Helm upgrade JASS Actif'
                   inputs:
                     connectionType: 'Azure Resource Manager'
-                    azureSubscription: 'jass-aks-actif-jass'
+                    azureSubscription: 'jass-aks-actif-jass-pipeline'
                     azureResourceGroup: 'jass-rg'
                     kubernetesCluster: 'jass-aks-actif'
                     namespace: '$(k8sNamespace)'
@@ -188,7 +188,7 @@ stages:
                   displayName: 'Helm upgrade JASS Passif'
                   inputs:
                     connectionType: 'Azure Resource Manager'
-                    azureSubscription: 'jass-aks-actif-jass'
+                    azureSubscription: 'jass-aks-actif-jass-pipeline'
                     azureResourceGroup: 'jass-rg'
                     kubernetesCluster: 'jass-aks-pass'
                     namespace: '$(k8sNamespace)'
