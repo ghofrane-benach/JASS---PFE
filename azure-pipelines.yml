@@ -155,10 +155,10 @@ stages:
               curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
             displayName: 'Install Helm'
 
-          - task: AzureCLI@2
+          - task: Kubernetes@1
             displayName: 'Get AKS credentials & Helm deploy Actif'
             inputs:
-              azureSubscription: 'jass-devops-sp'
+              kubernetesServiceEndpoint: 'jass-aks-actif-jass-pipeline'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
@@ -191,10 +191,10 @@ stages:
               curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
             displayName: 'Install Helm'
 
-          - task: AzureCLI@2
+          - task: Kubernetes@1
             displayName: 'Get AKS credentials & Helm deploy Passif'
             inputs:
-              azureSubscription: 'jass-devops-sp'
+              kubernetesServiceEndpoint: 'jass-aks-actif-jass-pipeline'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
@@ -205,3 +205,4 @@ stages:
                   --set image.registry=$(acrLoginServer) \
                   --set image.tag=$(Build.BuildId) \
                   --wait --timeout 10m || true
+
