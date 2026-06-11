@@ -134,75 +134,32 @@ stages:
                 $(Build.BuildId)
                 latest
 
-  # ── Stage 4 : Deploy AKS Actif ────────────────────────────────────────────
-  - stage: DeployActif
-    displayName: 'Deploy to AKS Actif'
+  # ── Stage 4 : Deploy AKS (manuel via Helm) ────────────────────────────────
+  # NOTE: Le déploiement sur AKS est effectué via Ansible + Helm
+  # en dehors du pipeline CI/CD (contrainte de permissions Azure AD).
+  # Commande : ansible-playbook ansible/playbook.yml
+  - stage: DeployInfo
+    displayName: 'Deploy Info'
     dependsOn: Push
     jobs:
-      - job: DeployActif
-        displayName: 'Helm Deploy AKS Actif'
+      - job: DeployInfo
+        displayName: 'Deployment Instructions'
         pool:
           vmImage: 'ubuntu-latest'
         steps:
-          - checkout: self
-
-          - task: KubectlInstaller@0
-            displayName: 'Install kubectl'
-            inputs:
-              kubectlVersion: 'latest'
-
           - script: |
-              curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-            displayName: 'Install Helm'
-
-          - task: Kubernetes@1
-            displayName: 'Get AKS credentials & Helm deploy Actif'
-            inputs:
-              kubernetesServiceEndpoint: 'jass-aks-actif-jass-pipeline'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                az aks get-credentials --resource-group jass-rg --name jass-aks-actif --overwrite-existing
-                helm upgrade --install jass $(System.DefaultWorkingDirectory)/helm/jass-chart \
-                  --namespace $(k8sNamespace) \
-                  --create-namespace \
-                  --set image.registry=$(acrLoginServer) \
-                  --set image.tag=$(Build.BuildId) \
-                  --wait --timeout 10m || true
-
-  # ── Stage 5 : Deploy AKS Passif ───────────────────────────────────────────
-  - stage: DeployPassif
-    displayName: 'Deploy to AKS Passif'
-    dependsOn: DeployActif
-    jobs:
-      - job: DeployPassif
-        displayName: 'Helm Deploy AKS Passif'
-        pool:
-          vmImage: 'ubuntu-latest'
-        steps:
-          - checkout: self
-
-          - task: KubectlInstaller@0
-            displayName: 'Install kubectl'
-            inputs:
-              kubectlVersion: 'latest'
-
-          - script: |
-              curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-            displayName: 'Install Helm'
-
-          - task: Kubernetes@1
-            displayName: 'Get AKS credentials & Helm deploy Passif'
-            inputs:
-              kubernetesServiceEndpoint: 'jass-aks-actif-jass-pipeline'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                az aks get-credentials --resource-group jass-rg --name jass-aks-pass --overwrite-existing
-                helm upgrade --install jass $(System.DefaultWorkingDirectory)/helm/jass-chart \
-                  --namespace $(k8sNamespace) \
-                  --create-namespace \
-                  --set image.registry=$(acrLoginServer) \
-                  --set image.tag=$(Build.BuildId) \
-                  --wait --timeout 10m || true
-
+              echo "=============================================="
+              echo "  Images pushées vers ACR avec succès ✅"
+              echo "  Backend  : $(backendImage):$(Build.BuildId)"
+              echo "  Frontend : $(frontendImage):$(Build.BuildId)"
+              echo "=============================================="
+              echo ""
+              echo "  Deploy sur AKS via Ansible :"
+              echo "  ansible-playbook ansible/playbook.yml"
+              echo ""
+              echo "  Ou directement via Helm :"
+              echo "  helm upgrade --install jass ./helm/jass-chart"
+              echo "    --namespace jass"
+              echo "    --set image.tag=$(Build.BuildId)"
+              echo "=============================================="
+            displayName: 'Afficher les instructions de déploiement'
