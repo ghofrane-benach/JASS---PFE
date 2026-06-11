@@ -69,6 +69,8 @@ stages:
               configMode: 'manual'
               cliProjectKey: 'ghofrane-benach_JASS---PFE'
               cliProjectName: 'JASS E-Commerce'
+              extraProperties: |
+                sonar.organization=ghofranepfe2026
             continueOnError: true
 
           - task: SonarQubeAnalyze@7
