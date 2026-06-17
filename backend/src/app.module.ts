@@ -9,6 +9,7 @@ import { OrdersModule } from './orders/orders.module';
 import { CartModule } from './cart/cart.module';
 import { ContactModule } from './contact/contact.module';
 import { AuditModule } from './audit/audit.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -28,7 +29,6 @@ import { AuditModule } from './audit/audit.module';
         retryDelay: 3000,
       }),
       inject: [ConfigService],
-      
     }),
     UsersModule,
     CategoriesModule,
@@ -38,6 +38,7 @@ import { AuditModule } from './audit/audit.module';
     CartModule,
     ContactModule,
     AuditModule,
+    HealthModule,  
   ],
 })
 export class AppModule {}

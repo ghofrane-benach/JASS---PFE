@@ -6,11 +6,69 @@ metadata:
   namespace: {{ .Values.namespace }}
   annotations:
     kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
 spec:
   rules:
-    - host: {{ .Values.ingress.host }}
-      http:
+    # Règle sans host — accessible via IP directe (Traffic Manager probe)
+    - http:
         paths:
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: {{ .Values.backend.port }}
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: {{ .Values.backend.port }}
+          - path: /products
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: {{ .Values.backend.port }}
+          - path: /orders
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: {{ .Values.backend.port }}
+          - path: /categories
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: {{ .Values.backend.port }}
+          - path: /cart
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: {{ .Values.backend.port }}
+          - path: /contacts
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: {{ .Values.backend.port }}
+          - path: /users
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: {{ .Values.backend.port }}
           - path: /
             pathType: Prefix
             backend:
@@ -18,11 +76,4 @@ spec:
                 name: frontend
                 port:
                   number: {{ .Values.frontend.port }}
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: backend
-                port:
-                  number: {{ .Values.backend.port }}
 {{- end }}

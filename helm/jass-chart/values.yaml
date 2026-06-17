@@ -50,3 +50,6 @@ ingress:
   host: jass.local
   annotations:
     kubernetes.io/ingress.class: nginx
+
+keyvault:
+  clientId: "be57f67f-6119-493f-99b9-ddfeffe4fbf0"  # actif
