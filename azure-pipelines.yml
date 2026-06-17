@@ -61,7 +61,7 @@ stages:
         pool:
           vmImage: 'ubuntu-latest'
         steps:
-          - task: SonarQubePrepare@7
+          - task: SonarQubePrepare@8
             displayName: 'Préparer analyse SonarQube'
             inputs:
               SonarQube: 'sonarqube-connection'
@@ -73,11 +73,11 @@ stages:
                 sonar.organization=ghofranepfe2026
             continueOnError: true
 
-          - task: SonarQubeAnalyze@7
+          - task: SonarQubeAnalyze@8
             displayName: 'Lancer analyse SonarQube'
             continueOnError: true
 
-          - task: SonarQubePublish@7
+          - task: SonarQubePublish@8
             displayName: 'Publier résultats SonarQube'
             inputs:
               pollingTimeoutSec: '300'
@@ -165,3 +165,4 @@ stages:
               echo "    --set image.tag=$(Build.BuildId)"
               echo "=============================================="
             displayName: 'Afficher les instructions de déploiement'
+
