@@ -4,7 +4,6 @@ services:
     build: ./frontend
     ports:
       - "3001:3001"
-      
     depends_on:
       - backend
 
@@ -22,6 +21,11 @@ services:
       DB_PASSWORD: pfe2026
       DB_NAME: jass_ecommerce
       NODE_ENV: development
+      JWT_SECRET: jass-secret-key-2025
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      AZURE_COMMUNICATION_CONNECTION_STRING: "endpoint=https://jass-communication.europe.communication.azure.com/;accesskey=Kj5G7LxbpYxouR5A03wkHwggVpong16LAsv37XoM1mCVO9bUAZgfJQQJ99CDACULyCpfiLRiAAAAAZCSjeVH"
+      AZURE_EMAIL_SENDER: "donotreply@e5f3ec40-76a1-4255-b6e7-8f354fb39cbb.azurecomm.net"
 
   db:
     image: postgres:15-alpine
@@ -35,11 +39,22 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql 
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d jass_ecommerce"]
       interval: 5s
       timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: jass_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
       retries: 5
 
 volumes:
