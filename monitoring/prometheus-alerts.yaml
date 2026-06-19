@@ -1,0 +1,224 @@
+# ── Prometheus Alerting Rules — JASS E-Commerce ───────────────────────────
+# Ces règles sont déployées sur le cluster AKS via Helm (kube-prometheus-stack)
+# Installation : kubectl apply -f prometheus-alerts.yaml -n monitoring
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: jass-alerting-rules
+  namespace: monitoring
+  labels:
+    release: prometheus   # label requis par kube-prometheus-stack
+spec:
+  groups:
+
+    # ── Groupe 1 : Disponibilité des pods ──────────────────────────────────
+    - name: jass.pods
+      interval: 30s
+      rules:
+
+        # Pod en CrashLoopBackOff
+        - alert: PodCrashLoopBackOff
+          expr: |
+            kube_pod_container_status_waiting_reason{
+              namespace="jass",
+              reason="CrashLoopBackOff"
+            } == 1
+          for: 2m
+          labels:
+            severity: critical
+            team: jass
+          annotations:
+            summary: "Pod {{ $labels.pod }} en CrashLoopBackOff"
+            description: |
+              Le pod {{ $labels.pod }} dans le namespace {{ $labels.namespace }}
+              est en CrashLoopBackOff depuis plus de 2 minutes.
+              Action : kubectl logs {{ $labels.pod }} -n jass
+
+        # Pod non disponible
+        - alert: PodNotReady
+          expr: |
+            kube_pod_status_ready{
+              namespace="jass",
+              condition="true"
+            } == 0
+          for: 5m
+          labels:
+            severity: warning
+            team: jass
+          annotations:
+            summary: "Pod {{ $labels.pod }} non prêt"
+            description: |
+              Le pod {{ $labels.pod }} n'est pas Ready depuis 5 minutes.
+
+        # Redémarrages fréquents
+        - alert: PodRestartingTooOften
+          expr: |
+            rate(kube_pod_container_status_restarts_total{
+              namespace="jass"
+            }[15m]) * 60 > 3
+          for: 5m
+          labels:
+            severity: warning
+            team: jass
+          annotations:
+            summary: "Pod {{ $labels.pod }} redémarre trop souvent"
+            description: |
+              Le pod {{ $labels.pod }} a redémarré plus de 3 fois en 15 minutes.
+
+    # ── Groupe 2 : Ressources CPU et Mémoire ──────────────────────────────
+    - name: jass.resources
+      interval: 60s
+      rules:
+
+        # CPU > 80%
+        - alert: HighCPUUsage
+          expr: |
+            sum(rate(container_cpu_usage_seconds_total{
+              namespace="jass",
+              container!=""
+            }[5m])) by (pod, container)
+            /
+            sum(kube_pod_container_resource_limits{
+              namespace="jass",
+              resource="cpu"
+            }) by (pod, container)
+            * 100 > 80
+          for: 5m
+          labels:
+            severity: warning
+            team: jass
+          annotations:
+            summary: "CPU élevé sur {{ $labels.pod }}"
+            description: |
+              Le container {{ $labels.container }} du pod {{ $labels.pod }}
+              utilise plus de 80% de son CPU limit depuis 5 minutes.
+              Valeur actuelle : {{ $value | printf "%.1f" }}%
+
+        # Mémoire > 85%
+        - alert: HighMemoryUsage
+          expr: |
+            sum(container_memory_working_set_bytes{
+              namespace="jass",
+              container!=""
+            }) by (pod, container)
+            /
+            sum(kube_pod_container_resource_limits{
+              namespace="jass",
+              resource="memory"
+            }) by (pod, container)
+            * 100 > 85
+          for: 5m
+          labels:
+            severity: warning
+            team: jass
+          annotations:
+            summary: "Mémoire élevée sur {{ $labels.pod }}"
+            description: |
+              Le container {{ $labels.container }} utilise plus de 85% de sa
+              limite mémoire depuis 5 minutes.
+              Valeur actuelle : {{ $value | printf "%.1f" }}%
+
+    # ── Groupe 3 : Health Endpoints et Latence ────────────────────────────
+    - name: jass.health
+      interval: 30s
+      rules:
+
+        # Health endpoint down
+        - alert: BackendHealthDown
+          expr: |
+            probe_success{
+              job="blackbox",
+              instance=~".*health.*"
+            } == 0
+          for: 2m
+          labels:
+            severity: critical
+            team: jass
+          annotations:
+            summary: "Health endpoint JASS inaccessible"
+            description: |
+              L'endpoint /health ne répond plus depuis 2 minutes.
+              Traffic Manager va basculer vers le cluster passif.
+
+        # Latence HTTP élevée (p95 > 2s)
+        - alert: HighHTTPLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket{
+                namespace="jass"
+              }[5m])) by (le, pod)
+            ) > 2
+          for: 5m
+          labels:
+            severity: warning
+            team: jass
+          annotations:
+            summary: "Latence élevée sur {{ $labels.pod }}"
+            description: |
+              Le p95 de latence HTTP dépasse 2 secondes depuis 5 minutes.
+              Valeur actuelle : {{ $value | printf "%.2f" }}s
+
+        # Taux d'erreur HTTP > 5%
+        - alert: HighHTTPErrorRate
+          expr: |
+            sum(rate(http_requests_total{
+              namespace="jass",
+              status=~"5.."
+            }[5m])) by (pod)
+            /
+            sum(rate(http_requests_total{
+              namespace="jass"
+            }[5m])) by (pod)
+            * 100 > 5
+          for: 3m
+          labels:
+            severity: critical
+            team: jass
+          annotations:
+            summary: "Taux d'erreur élevé sur {{ $labels.pod }}"
+            description: |
+              Plus de 5% des requêtes HTTP retournent une erreur 5xx.
+              Valeur actuelle : {{ $value | printf "%.1f" }}%
+
+    # ── Groupe 4 : Base de données PostgreSQL ─────────────────────────────
+    - name: jass.database
+      interval: 60s
+      rules:
+
+        # PostgreSQL down
+        - alert: PostgreSQLDown
+          expr: |
+            kube_pod_status_ready{
+              namespace="jass",
+              pod=~"postgres-.*",
+              condition="true"
+            } == 0
+          for: 1m
+          labels:
+            severity: critical
+            team: jass
+          annotations:
+            summary: "PostgreSQL inaccessible dans le namespace jass"
+            description: |
+              Le pod PostgreSQL n'est plus Ready.
+              Le backend ne peut plus accéder à la base de données.
+              Traffic Manager va détecter le 503 sur /health/ready et basculer.
+
+        # Redis down
+        - alert: RedisDown
+          expr: |
+            kube_pod_status_ready{
+              namespace="jass",
+              pod=~"redis-.*",
+              condition="true"
+            } == 0
+          for: 2m
+          labels:
+            severity: warning
+            team: jass
+          annotations:
+            summary: "Redis inaccessible dans le namespace jass"
+            description: |
+              Le pod Redis n'est plus Ready.
+              Le cache sera désactivé, performances dégradées.
