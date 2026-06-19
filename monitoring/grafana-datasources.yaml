@@ -1,0 +1,37 @@
+# ── Grafana Datasources — JASS E-Commerce ─────────────────────────────────
+# Déployer via : kubectl apply -f grafana-datasources.yaml -n monitoring
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: monitoring
+  labels:
+    grafana_datasource: "1"
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+
+      # Prometheus — Cluster Actif (westeurope)
+      - name: Prometheus-Actif
+        type: prometheus
+        url: http://prometheus-kube-prometheus-prometheus:9090
+        access: proxy
+        isDefault: true
+        jsonData:
+          httpMethod: POST
+          customQueryParameters: "cluster=actif"
+        editable: true
+
+      # Prometheus — Cluster Passif (northeurope)
+      # Configuré via federation depuis le cluster actif
+      - name: Prometheus-Passif
+        type: prometheus
+        url: http://prometheus-passif:9090
+        access: proxy
+        isDefault: false
+        jsonData:
+          httpMethod: POST
+          customQueryParameters: "cluster=passif"
+        editable: true

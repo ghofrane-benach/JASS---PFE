@@ -1,0 +1,291 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "annotations": { "list": [] },
+  "description": "Comparaison Cluster Actif vs Passif — Différenciation Active-Passive",
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "🟢 Cluster Actif — westeurope",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-actif" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "mappings": [
+            { "options": { "0": { "text": "⛔ DOWN" }, "1": { "text": "✅ UP" } }, "type": "value" }
+          ]
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Backend — Actif",
+      "type": "stat",
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus-actif" },
+        "expr": "kube_pod_status_ready{namespace=\"jass\", pod=~\"backend-.*\", condition=\"true\"}",
+        "legendFormat": "Backend Actif"
+      }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-actif" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 2 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 9, "x": 6, "y": 1 },
+      "id": 3,
+      "title": "Latence p95 — Cluster Actif",
+      "type": "timeseries",
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus-actif" },
+        "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=\"jass\"}[5m])) by (le))",
+        "legendFormat": "p95 Actif"
+      }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-actif" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "percent"
+        }
+      },
+      "gridPos": { "h": 8, "w": 9, "x": 15, "y": 1 },
+      "id": 4,
+      "title": "CPU Usage — Cluster Actif",
+      "type": "timeseries",
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus-actif" },
+        "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"jass\", container!=\"\"}[5m])) by (pod) * 100",
+        "legendFormat": "{{ pod }} [actif]"
+      }]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 10,
+      "title": "🔵 Cluster Passif — northeurope (Standby)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-passif" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "blue", "value": 1 }
+            ]
+          },
+          "mappings": [
+            { "options": { "0": { "text": "⛔ DOWN" }, "1": { "text": "✅ STANDBY" } }, "type": "value" }
+          ]
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 10 },
+      "id": 11,
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Backend — Passif",
+      "type": "stat",
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus-passif" },
+        "expr": "kube_pod_status_ready{namespace=\"jass\", pod=~\"backend-.*\", condition=\"true\"}",
+        "legendFormat": "Backend Passif"
+      }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-passif" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "lineStyle": { "dash": [10, 10], "fill": "dash" } },
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 2 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 9, "x": 6, "y": 10 },
+      "id": 12,
+      "title": "Latence p95 — Cluster Passif",
+      "type": "timeseries",
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus-passif" },
+        "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=\"jass\"}[5m])) by (le))",
+        "legendFormat": "p95 Passif"
+      }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-passif" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "lineStyle": { "dash": [10, 10], "fill": "dash" } },
+          "unit": "percent"
+        }
+      },
+      "gridPos": { "h": 8, "w": 9, "x": 15, "y": 10 },
+      "id": 13,
+      "title": "CPU Usage — Cluster Passif",
+      "type": "timeseries",
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus-passif" },
+        "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"jass\", container!=\"\"}[5m])) by (pod) * 100",
+        "legendFormat": "{{ pod }} [passif]"
+      }]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "id": 20,
+      "title": "📊 Comparaison Actif vs Passif",
+      "type": "row"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "s"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "id": 21,
+      "title": "Latence p95 — Actif (vert) vs Passif (bleu)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus-actif" },
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=\"jass\"}[5m])) by (le))",
+          "legendFormat": "🟢 Actif p95"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus-passif" },
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=\"jass\"}[5m])) by (le))",
+          "legendFormat": "🔵 Passif p95"
+        }
+      ]
+    },
+    {
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "percent"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "id": 22,
+      "title": "CPU — Actif (vert) vs Passif (bleu)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus-actif" },
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"jass\", container!=\"\"}[5m])) * 100",
+          "legendFormat": "🟢 CPU Actif"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus-passif" },
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"jass\", container!=\"\"}[5m])) * 100",
+          "legendFormat": "🔵 CPU Passif"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+      "id": 30,
+      "title": "🔄 Traffic Manager — Basculement",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-actif" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.01 },
+              { "color": "red", "value": 0.05 }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 28 },
+      "id": 31,
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Taux d'erreur — Cluster Actif (seuil bascule: 5%)",
+      "type": "stat",
+      "targets": [{
+        "expr": "sum(rate(http_requests_total{namespace=\"jass\", status=~\"5..\"}[5m])) / sum(rate(http_requests_total{namespace=\"jass\"}[5m]))",
+        "legendFormat": "Error Rate Actif"
+      }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus-actif" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 28 },
+      "id": 32,
+      "title": "Redémarrages pods — Indicateur instabilité",
+      "type": "timeseries",
+      "targets": [{
+        "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"jass\"}) by (pod)",
+        "legendFormat": "{{ pod }}"
+      }]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["jass", "kubernetes", "cluster-comparison", "active-passive"],
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "JASS — Comparaison Actif vs Passif",
+  "uid": "jass-cluster-comparison",
+  "version": 1
+}

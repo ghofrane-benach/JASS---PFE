@@ -1,0 +1,39 @@
+# ── Grafana ConfigMap — Dashboards JASS ───────────────────────────────────
+# Déployer via : kubectl apply -f grafana-configmap.yaml -n monitoring
+# Les dashboards sont auto-chargés par Grafana via le sidecar
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jass-grafana-dashboards
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"   # label requis par le sidecar Grafana
+data:
+  jass-overview.json: |
+    # Contenu du fichier jass-overview.json (voir grafana-dashboards/)
+  jass-cluster-comparison.json: |
+    # Contenu du fichier cluster-comparison.json (voir grafana-dashboards/)
+
+---
+# ── Instructions de déploiement ────────────────────────────────────────────
+# 1. S'assurer que Prometheus est installé sur les deux clusters
+#    helm install prometheus prometheus-community/kube-prometheus-stack \
+#      --namespace monitoring \
+#      --set grafana.adminPassword=Admin@JASS2026 \
+#      --set grafana.sidecar.dashboards.enabled=true \
+#      --set grafana.sidecar.datasources.enabled=true
+#
+# 2. Appliquer les datasources
+#    kubectl apply -f grafana-datasources.yaml -n monitoring
+#
+# 3. Appliquer les alerting rules
+#    kubectl apply -f prometheus-alerts.yaml -n monitoring
+#
+# 4. Appliquer les dashboards
+#    kubectl apply -f grafana-configmap.yaml -n monitoring
+#
+# 5. Accéder à Grafana
+#    kubectl port-forward svc/prometheus-grafana 3002:80 -n monitoring
+#    URL: http://localhost:3002
+#    User: admin / Password: Admin@JASS2026
