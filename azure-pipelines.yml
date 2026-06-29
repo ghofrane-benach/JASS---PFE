@@ -88,11 +88,8 @@ stages:
               containerRegistry: 'acr-service-connection'
 
           - script: |
-              curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-              echo "=== Scan Backend Image ==="
-              trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress $(backendImage):latest || true
-              echo "=== Scan Frontend Image ==="
-              trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress $(frontendImage):latest || true
+              docker run --rm aquasec/trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress $(backendImage):latest || true
+              docker run --rm aquasec/trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress $(frontendImage):latest || true
             displayName: 'Scan images avec Trivy'
 
   # ── Stage 3 : Push ACR ───────────────────────────────────────────────────
@@ -148,7 +145,7 @@ stages:
               echo "=============================================="
             displayName: 'Afficher les instructions de deploiement'
 
-  # ── Stage 5 : K6 Load Test ────────────────────────────────────────────────
+  # ── Stage 5 : K6 Load Test ───────────────────────────────────────────────
   - stage: LoadTest
     displayName: 'K6 Load Testing'
     dependsOn: DeployInfo
