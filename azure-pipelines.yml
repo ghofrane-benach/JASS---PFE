@@ -58,6 +58,8 @@ stages:
       - job: CodeQuality
         displayName: 'SonarQube Analysis'
         pool: Default
+        variables:
+          JAVA_HOME: 'D:\Java\jdk-17'
         steps:
           - task: SonarQubePrepare@8
             displayName: 'Préparer analyse SonarQube'
@@ -87,10 +89,14 @@ stages:
               command: login
               containerRegistry: 'acr-service-connection'
 
-          - script: |
-              docker run --rm aquasec/trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress $(backendImage):latest || true
-              docker run --rm aquasec/trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress $(frontendImage):latest || true
+          - powershell: |
+              Write-Host "=== Scan Backend Image ==="
+              docker run --rm aquasec/trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress $(backendImage):latest
+              Write-Host "=== Scan Frontend Image ==="
+              docker run --rm aquasec/trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress $(frontendImage):latest
+              Write-Host "=== Trivy scan completed ==="
             displayName: 'Scan images avec Trivy'
+            continueOnError: true
 
   # ── Stage 3 : Push ACR ───────────────────────────────────────────────────
   - stage: Push
@@ -134,18 +140,18 @@ stages:
         displayName: 'Deployment Instructions'
         pool: Default
         steps:
-          - script: |
-              echo "=============================================="
-              echo "  Images pushees vers ACR avec succes"
-              echo "  Backend  : $(backendImage):$(Build.BuildId)"
-              echo "  Frontend : $(frontendImage):$(Build.BuildId)"
-              echo "=============================================="
-              echo "  Deploy sur AKS via Ansible :"
-              echo "  ansible-playbook ansible/playbook.yml"
-              echo "=============================================="
+          - powershell: |
+              Write-Host "=============================================="
+              Write-Host "  Images pushees vers ACR avec succes"
+              Write-Host "  Backend  : $(backendImage):$(Build.BuildId)"
+              Write-Host "  Frontend : $(frontendImage):$(Build.BuildId)"
+              Write-Host "=============================================="
+              Write-Host "  Deploy sur AKS via Ansible :"
+              Write-Host "  ansible-playbook ansible/playbook.yml"
+              Write-Host "=============================================="
             displayName: 'Afficher les instructions de deploiement'
 
-  # ── Stage 5 : K6 Load Test ───────────────────────────────────────────────
+  # ── Stage 5 : K6 Load Test ────────────────────────────────────────────────
   - stage: LoadTest
     displayName: 'K6 Load Testing'
     dependsOn: DeployInfo
@@ -154,6 +160,9 @@ stages:
         displayName: 'K6 Smoke Test'
         pool: Default
         steps:
-          - script: |
-              docker run --rm -e BASE_URL=http://localhost:3000 grafana/k6 run - < k6/smoke-test.js || true
+          - powershell: |
+              Write-Host "=== K6 Smoke Test ==="
+              Get-Content k6/smoke-test.js | docker run --rm -i -e BASE_URL=http://host.docker.internal:3000 grafana/k6 run -
+              Write-Host "=== K6 Test completed ==="
             displayName: 'K6 Smoke Test'
+            continueOnError: true
