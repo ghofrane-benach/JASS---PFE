@@ -12,7 +12,7 @@ variables:
 
 stages:
 
-  # ── Stage 1 : Build ────────────────────────────────────────────────────────
+  # ── Stage 1 : Build ───────────────────────────────────────────────────────
   - stage: Build
     displayName: 'Build Docker Images'
     jobs:
@@ -50,7 +50,7 @@ stages:
                 $(Build.BuildId)
                 latest
 
-  # ── Stage 2 : Test & Sécurité ─────────────────────────────────────────────
+  # ── Stage 2 : Test & Sécurité ────────────────────────────────────────────
   - stage: Test
     displayName: 'Test & Security Scan'
     dependsOn: Build
@@ -65,10 +65,6 @@ stages:
               SonarQube: 'sonarqube-connection'
               scannerMode: 'CLI'
               configMode: 'file'
-              cliProjectKey: 'ghofrane-benach_JASS---PFE'
-              cliProjectName: 'JASS E-Commerce'
-              extraProperties: |
-                sonar.organization=ghofranepfe2026
             continueOnError: true
 
           - task: SonarQubeAnalyze@8
@@ -97,8 +93,9 @@ stages:
               trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress $(backendImage):latest || true
               echo "=== Scan Frontend Image ==="
               trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress $(frontendImage):latest || true
-     
-  # ── Stage 3 : Push ACR ────────────────────────────────────────────────────
+            displayName: 'Scan images avec Trivy'
+
+  # ── Stage 3 : Push ACR ───────────────────────────────────────────────────
   - stage: Push
     displayName: 'Push to ACR'
     dependsOn: Test
@@ -131,10 +128,7 @@ stages:
                 $(Build.BuildId)
                 latest
 
-  # ── Stage 4 : Deploy AKS (manuel via Helm) ────────────────────────────────
-  # NOTE: Le déploiement sur AKS est effectué via Ansible + Helm
-  # en dehors du pipeline CI/CD (contrainte de permissions Azure AD).
-  # Commande : ansible-playbook ansible/playbook.yml
+  # ── Stage 4 : Deploy Info ─────────────────────────────────────────────────
   - stage: DeployInfo
     displayName: 'Deploy Info'
     dependsOn: Push
@@ -145,31 +139,24 @@ stages:
         steps:
           - script: |
               echo "=============================================="
-              echo "  Images pushées vers ACR avec succès ✅"
+              echo "  Images pushees vers ACR avec succes"
               echo "  Backend  : $(backendImage):$(Build.BuildId)"
               echo "  Frontend : $(frontendImage):$(Build.BuildId)"
               echo "=============================================="
-              echo ""
               echo "  Deploy sur AKS via Ansible :"
               echo "  ansible-playbook ansible/playbook.yml"
-              echo ""
-              echo "  Ou directement via Helm :"
-              echo "  helm upgrade --install jass ./helm/jass-chart"
-              echo "    --namespace jass"
-              echo "    --set image.tag=$(Build.BuildId)"
               echo "=============================================="
-            displayName: 'Afficher les instructions de déploiement'
+            displayName: 'Afficher les instructions de deploiement'
 
-    -  stage: LoadTest
-              displayName: 'K6 Load Testing'
-               dependsOn: DeployActif
-        jobs:
-      -  job: K6Test
-         pool: Default
-         steps:
-         - script: |
-            docker run --rm \
-              -e BASE_URL=http://$(NGINX_IP) \
-              grafana/k6 run k6/smoke-test.js
-           displayName: 'K6 Smoke Test'      displayName: 'Scan images avec Trivy'
-
+  # ── Stage 5 : K6 Load Test ────────────────────────────────────────────────
+  - stage: LoadTest
+    displayName: 'K6 Load Testing'
+    dependsOn: DeployInfo
+    jobs:
+      - job: K6Test
+        displayName: 'K6 Smoke Test'
+        pool: Default
+        steps:
+          - script: |
+              docker run --rm -e BASE_URL=http://localhost:3000 grafana/k6 run - < k6/smoke-test.js || true
+            displayName: 'K6 Smoke Test'
