@@ -18,8 +18,7 @@ stages:
     jobs:
       - job: BuildImages
         displayName: 'Build Frontend & Backend'
-        pool:
-          vmImage: 'ubuntu-latest'
+        pool: Default
         steps:
           - task: Docker@2
             displayName: 'Login to ACR'
@@ -58,8 +57,7 @@ stages:
     jobs:
       - job: CodeQuality
         displayName: 'SonarQube Analysis'
-        pool:
-          vmImage: 'ubuntu-latest'
+        pool: Default
         steps:
           - task: SonarQubePrepare@8
             displayName: 'Préparer analyse SonarQube'
@@ -85,8 +83,7 @@ stages:
 
       - job: SecurityScan
         displayName: 'Trivy Security Scan'
-        pool:
-          vmImage: 'ubuntu-latest'
+        pool: Default
         steps:
           - task: Docker@2
             displayName: 'Login to ACR'
@@ -100,8 +97,7 @@ stages:
               trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress $(backendImage):latest || true
               echo "=== Scan Frontend Image ==="
               trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress $(frontendImage):latest || true
-            displayName: 'Scan images avec Trivy'
-
+     
   # ── Stage 3 : Push ACR ────────────────────────────────────────────────────
   - stage: Push
     displayName: 'Push to ACR'
@@ -109,8 +105,7 @@ stages:
     jobs:
       - job: PushImages
         displayName: 'Push Images to Azure Container Registry'
-        pool:
-          vmImage: 'ubuntu-latest'
+        pool: Default
         steps:
           - task: Docker@2
             displayName: 'Build & Push Backend'
@@ -146,8 +141,7 @@ stages:
     jobs:
       - job: DeployInfo
         displayName: 'Deployment Instructions'
-        pool:
-          vmImage: 'ubuntu-latest'
+        pool: Default
         steps:
           - script: |
               echo "=============================================="
@@ -165,4 +159,17 @@ stages:
               echo "    --set image.tag=$(Build.BuildId)"
               echo "=============================================="
             displayName: 'Afficher les instructions de déploiement'
+
+    -  stage: LoadTest
+              displayName: 'K6 Load Testing'
+               dependsOn: DeployActif
+        jobs:
+      -  job: K6Test
+         pool: Default
+         steps:
+         - script: |
+            docker run --rm \
+              -e BASE_URL=http://$(NGINX_IP) \
+              grafana/k6 run k6/smoke-test.js
+           displayName: 'K6 Smoke Test'      displayName: 'Scan images avec Trivy'
 
