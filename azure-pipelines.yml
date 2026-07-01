@@ -130,30 +130,58 @@ stages:
                 $(Build.BuildId)
                 latest
 
-  # ── Stage 4 : Deploy Info ─────────────────────────────────────────────────
-  - stage: DeployInfo
-    displayName: 'Deploy Info'
+  # ── Stage 4 : Deploy AKS Actif ────────────────────────────────────────────
+  - stage: DeployActif
+    displayName: 'Deploy to AKS Actif'
     dependsOn: Push
     jobs:
-      - job: DeployInfo
-        displayName: 'Deployment Instructions'
+      - job: DeployActif
+        displayName: 'Helm Deploy AKS Actif'
         pool: Default
         steps:
           - powershell: |
-              Write-Host "=============================================="
-              Write-Host "  Images pushees vers ACR avec succes"
-              Write-Host "  Backend  : $(backendImage):$(Build.BuildId)"
-              Write-Host "  Frontend : $(frontendImage):$(Build.BuildId)"
-              Write-Host "=============================================="
-              Write-Host "  Deploy sur AKS via Ansible :"
-              Write-Host "  ansible-playbook ansible/playbook.yml"
-              Write-Host "=============================================="
-            displayName: 'Afficher les instructions de deploiement'
+              Write-Host "=== Connexion au cluster Actif ==="
+              az aks get-credentials --resource-group jass-rg --name jass-aks-actif --overwrite-existing
+              Write-Host "=== Helm upgrade JASS Actif ==="
+              helm upgrade --install jass "$(System.DefaultWorkingDirectory)/helm/jass-chart" `
+                --namespace jass `
+                --create-namespace `
+                --set backend.image.tag=$(Build.BuildId) `
+                --set frontend.image.tag=$(Build.BuildId) `
+                --wait --timeout 5m
+              Write-Host "=== Verification des pods ==="
+              kubectl get pods -n jass
+            displayName: 'Deploy sur AKS Actif'
+            continueOnError: true
 
-  # ── Stage 5 : K6 Load Test ────────────────────────────────────────────────
+  # ── Stage 5 : Deploy AKS Passif ───────────────────────────────────────────
+  - stage: DeployPassif
+    displayName: 'Deploy to AKS Passif'
+    dependsOn: DeployActif
+    jobs:
+      - job: DeployPassif
+        displayName: 'Helm Deploy AKS Passif'
+        pool: Default
+        steps:
+          - powershell: |
+              Write-Host "=== Connexion au cluster Passif ==="
+              az aks get-credentials --resource-group jass-rg --name jass-aks-pass --overwrite-existing
+              Write-Host "=== Helm upgrade JASS Passif ==="
+              helm upgrade --install jass "$(System.DefaultWorkingDirectory)/helm/jass-chart" `
+                --namespace jass `
+                --create-namespace `
+                --set backend.image.tag=$(Build.BuildId) `
+                --set frontend.image.tag=$(Build.BuildId) `
+                --wait --timeout 5m
+              Write-Host "=== Verification des pods ==="
+              kubectl get pods -n jass
+            displayName: 'Deploy sur AKS Passif'
+            continueOnError: true
+
+  # ── Stage 6 : K6 Load Test ────────────────────────────────────────────────
   - stage: LoadTest
     displayName: 'K6 Load Testing'
-    dependsOn: DeployInfo
+    dependsOn: DeployActif
     jobs:
       - job: K6Test
         displayName: 'K6 Smoke Test'
